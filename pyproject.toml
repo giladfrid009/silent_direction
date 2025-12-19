@@ -1,0 +1,38 @@
+[project]
+name = "redundancy_direction"
+version = "0.1.0"
+description = "Add your description here"
+requires-python = ">=3.12"
+dependencies = [
+    "accelerate>=1.7.0",
+    "cuda-python>=12.9.0",
+    "fastapi>=0.115.12",
+    "huggingface-hub[cli]>=0.32.4",
+    "ipykernel>=6.29.5",
+    "ipywidgets>=8.1.7",
+    "jupyter>=1.1.1",
+    "matplotlib>=3.10.3",
+    "msgpack>=1.1.0",
+    "ninja>=1.11.1.4",
+    "numpy>=1.26.4",
+    "optimum>=1.25.3",
+    "packaging>=25.0",
+    "pandas>=2.2.3",
+    "msgspec>=0.18.4",
+    "requests>=2.32.3",
+    "torch>=2.6",
+    "tqdm>=4.67.1",
+    "transformers==4.51.3",
+    "uvicorn>=0.34.3",
+    "xformers>=0.0.27.post2",
+    "clearml>=2.0.0",
+    "sentence-transformers>=5.0.0",
+    "dotenv>=0.9.9",
+    "pyarrow>=21.0.0",
+    "datasets>=4.1.1",
+    "peft>=0.17.1",
+    "openai>=1.90.0",
+    "scikit-learn>=1.7.2",
+    "seaborn>=0.13.2",
+    "scipy>=1.16.2",
+]
