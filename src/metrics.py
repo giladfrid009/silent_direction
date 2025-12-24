@@ -1,5 +1,6 @@
 import math
 import torch
+import torch.nn.functional as F
 
 
 def compute_redundancy_score(proj_norm: float, top1_accuracy: float, top10_agreement: float) -> float:
@@ -18,88 +19,6 @@ def compute_redundancy_score(proj_norm: float, top1_accuracy: float, top10_agree
         Redundancy score (higher is better)
     """
     return proj_norm * top1_accuracy * top10_agreement
-
-
-def project(activations: torch.Tensor, direction: torch.Tensor, normalize: bool = False) -> torch.Tensor:
-    """
-    Args:
-        activations: tensor of activations, shape (batch_size, seq_len, hidden_size)
-        direction: direction vector to project onto, shape (hidden_size,)
-        normalize: whether to normalize the direction vector
-    """
-    if normalize:
-        direction = torch.nn.functional.normalize(direction, dim=-1)
-
-    coeffs = activations @ direction
-    projection = coeffs.unsqueeze(-1).expand_as(activations) * direction 
-    return projection
-
-
-def compute_projected_l2_norm(
-    activations: torch.Tensor,
-    direction: torch.Tensor,
-    targets_mask: torch.Tensor,
-    normalize: bool = False,
-    reduction: str = "mean",
-) -> torch.Tensor:
-    """
-    Compute the L2 norm of the projection of activations onto a given direction.
-
-    Args:
-        activations: tensor of activations, shape (batch_size, seq_len, hidden_size)
-        targets_mask: mask indicating target positions, shape (batch_size, seq_len)
-        direction: direction vector to project onto, shape (hidden_size,)
-        reduce: reduction method, either "mean", "sum" or "none"
-
-    Returns:
-        L2 norm of the projected activations. 
-        - If reduce is "none", returns tensor of norms for each position, of shape (num_target_positions,)
-        - If reduce is "mean" or "sum", returns a single scalar tensor.
-    """
-    assert reduction in {"mean", "sum", "none"}, f"Invalid reduce method: {reduction}"
-    
-    if normalize:
-        direction = torch.nn.functional.normalize(direction, dim=-1)
-
-    targets_mask = targets_mask.bool()
-    activations = activations[targets_mask].view(-1, activations.size(-1))
-
-    norms = torch.abs(activations @ direction)
-
-    if reduction == "mean":
-        return norms.mean()
-    if reduction == "sum":
-        return norms.sum()
-    if reduction == "none":
-        return norms
-
-    raise ValueError(f"Invalid reduce method: {reduction}")
-
-
-def compute_projected_variance(
-    activations: torch.Tensor,
-    direction: torch.Tensor,
-    targets_mask: torch.Tensor,
-    normalize: bool = False,
-) -> torch.Tensor:
-    """
-    Compute the variance of the projection of activations onto a given direction.
-    Variance computed along the
-
-    Args:
-        activations: tensor of activations, shape (batch_size, seq_len, hidden_size)
-        direction: direction vector to project onto, shape (hidden_size,)
-
-    Returns:
-        variance of the projected activations
-    """    
-    if normalize:
-        direction = torch.nn.functional.normalize(direction, dim=-1)
-
-    targets_mask = targets_mask.bool()
-    activations = activations[targets_mask].view(-1, activations.size(-1))
-
-    return torch.var(activations @ direction, unbiased=True)
 
 
 @torch.inference_mode()
@@ -164,73 +83,3 @@ def compute_top_1_accuracy(
     accuracy = (top1_baseline == top1_modified).float().mean()
 
     return accuracy
-
-
-# TODO: implement top_k here.
-def compute_kl_divergence(
-    baseline_logits: torch.Tensor,
-    modified_logits: torch.Tensor,
-    targets_mask: torch.Tensor,
-    top_k: int | None = None,
-) -> torch.Tensor:
-    """
-    Compute KL divergence between two logit distributions over all non-padding tokens.
-
-    Returns:
-        Mean KL divergence across all targets positions
-    """
-    if top_k is not None:
-        # select only top_k logits according to the baseline_logits and compute over that
-        topk_values, topk_indices = torch.topk(baseline_logits, top_k, dim=-1)
-        baseline_logits = topk_values
-        modified_logits = torch.gather(modified_logits, -1, topk_indices)
-
-    # Extract only non-padding tokens
-    targets_mask = targets_mask.bool()
-    baseline_logits = baseline_logits[targets_mask].view(-1, baseline_logits.size(-1))
-    modified_logits = modified_logits[targets_mask].view(-1, modified_logits.size(-1))
-
-    # Convert to log probabilities
-    log_baselines = torch.nn.functional.log_softmax(baseline_logits, dim=-1)
-    log_modified = torch.nn.functional.log_softmax(modified_logits, dim=-1)
-
-    kl_div = torch.nn.functional.kl_div(log_modified, log_baselines, reduction="batchmean", log_target=True)
-
-    return kl_div
-
-
-def compute_js_divergence(
-    baseline_logits: torch.Tensor,
-    modified_logits: torch.Tensor,
-    targets_mask: torch.Tensor,
-    top_k: int | None = None,
-) -> torch.Tensor:
-    """
-    Compute Jensen-Shannon divergence between two logit distributions over all non-padding tokens.
-    Symmetric and bounded between 0 and 1.
-
-    Returns:
-        Mean JS divergence across all targets positions
-    """
-    if top_k is not None:
-        # select only top_k logits according to the baseline_logits and compute over that
-        topk_values, topk_indices = torch.topk(baseline_logits, top_k, dim=-1)
-        baseline_logits = topk_values
-        modified_logits = torch.gather(modified_logits, -1, topk_indices)
-
-    # Extract only non-padding tokens
-    targets_mask = targets_mask.bool()
-    baseline_logits = baseline_logits[targets_mask].view(-1, baseline_logits.size(-1))
-    modified_logits = modified_logits[targets_mask].view(-1, modified_logits.size(-1))
-
-    # Convert to probabilities
-    p = torch.nn.functional.softmax(baseline_logits, dim=-1)
-    q = torch.nn.functional.softmax(modified_logits, dim=-1)
-    m = 0.5 * (p + q)
-
-    kl_pm = torch.nn.functional.kl_div(torch.nn.functional.log_softmax(baseline_logits, dim=-1), m, reduction="batchmean", log_target=False)
-    kl_qm = torch.nn.functional.kl_div(torch.nn.functional.log_softmax(modified_logits, dim=-1), m, reduction="batchmean", log_target=False)
-
-    js_div = 0.5 * (kl_pm + kl_qm) / math.log(2)
-
-    return js_div
