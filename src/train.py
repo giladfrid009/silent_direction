@@ -1,27 +1,13 @@
 import torch
-import time
 from transformers import PreTrainedModel, PreTrainedTokenizer
-from math import floor
 from tqdm import tqdm
 
 from src.utils.torch import extract_device
-from src.activ_extractor import ActivationExtractor
-from src.activ_manipulator import ActivationManipulator
+from src.activation_extractor import ActivationExtractor, ActivationManipulator
 from src.model_helpers import tokenize
 from src.aliases import Conv
-
-from src.metrics import (
-    compute_top_k_token_agreement,
-    compute_top_1_accuracy,
-    compute_redundancy_score,
-)
-
-from src.losses import (
-    compute_kl_divergence,
-    compute_targets_mask,
-    compute_projected_l2_norm,
-)
-
+from src.metrics import Metrics
+from src.losses import Loss, compute_targets_mask
 from src.model_helpers import project
 
 
@@ -117,7 +103,7 @@ def find_redundant_1d_subspace(
         targets_mask = compute_targets_mask(encodings)
 
         # TODO: we might want to compute KL-div over top-k tokens, and not all.
-        kl_div = compute_kl_divergence(
+        kl_div = Loss.kl_divergence(
             baseline_logits=baseline_logits,
             modified_logits=modified_logits,
             targets_mask=targets_mask,
@@ -126,7 +112,7 @@ def find_redundant_1d_subspace(
 
         activations_normalized = torch.nn.functional.normalize(activations, dim=-1)
 
-        projection_norm = compute_projected_l2_norm(
+        projection_norm = Loss.projection_l2_norm(
             activations=activations_normalized,
             direction=v,
             targets_mask=targets_mask,
@@ -137,20 +123,24 @@ def find_redundant_1d_subspace(
         loss.backward()
         optim.step()
 
-        top10_agreement = compute_top_k_token_agreement(
+        top10_agreement = Metrics.topk_agreement(
             baseline_logits=baseline_logits.detach(),
             modified_logits=modified_logits.detach(),
             targets_mask=targets_mask,
             top_k=10,
         )
 
-        top1_accuracy = compute_top_1_accuracy(
+        top1_accuracy = Metrics.top1_accuracy(
             baseline_logits=baseline_logits.detach(),
             modified_logits=modified_logits.detach(),
             targets_mask=targets_mask,
         )
 
-        score_val = compute_redundancy_score(projection_norm.item(), top1_accuracy.item(), top10_agreement.item())
+        score_val = Metrics.redundancy_score(
+            proj_norm=projection_norm.item(),
+            top1_accuracy=top1_accuracy,
+            top10_agreement=top10_agreement,
+        )
 
         if score_val > best_score:
             best_score = score_val
@@ -158,8 +148,8 @@ def find_redundant_1d_subspace(
 
         if iteration % 20 == 0:
             print(
-                f"Iter {iteration:3d}: Top-1-Acc={top1_accuracy.item():.4f}, "
-                f"Top-10-Agr={top10_agreement.item():.4f}, "
+                f"Iter {iteration:3d}: Top-1-Acc={top1_accuracy:.4f}, "
+                f"Top-10-Agr={top10_agreement:.4f}, "
                 f"KL-Div={kl_div.item():.6f}, "
                 f"Proj-Norm={projection_norm.item():.4f}, "
                 f"Score={score_val:.6f}, "
@@ -185,25 +175,26 @@ def validate_redundant_subspace(
     batch_size: int = 8,
 ) -> dict[str, float]:
     device = extract_device(model)
+
     num_samples = len(convs)
     num_batches = (num_samples + batch_size - 1) // batch_size
 
-    all_top1_accuracies = []
-    all_top10_agreements = []
-    all_kl_divs = []
-
-    proj_raw_sum = 0.0
-    proj_norm_sum = 0.0
-    total_tokens = 0
-
     print(f"Validating over {num_samples} samples in {num_batches} batches...")
 
-    manipulator = ActivationManipulator(model, layer_name)
+    activ_manipulator = ActivationManipulator(model, layer_name)
     activ_extractor = ActivationExtractor(model, layer_name)
 
     def subtract_projection(activations: torch.Tensor) -> torch.Tensor:
         projection = project(activations, direction=redundant_dir, normalize=True)
         return activations - projection
+
+    METRICS = {
+        "top1_accuracy": 0.0,
+        "top10_agreement": 0.0,
+        "kl_divergence": 0.0,
+        "projection_mean_raw": 0.0,
+        "projection_mean_normalized": 0.0,
+    }
 
     for batch_idx in tqdm(range(num_batches), leave=False, desc="Validation"):
         start_idx = batch_idx * batch_size
@@ -216,54 +207,55 @@ def validate_redundant_subspace(
             baseline_logits = model(**encodings).logits
             activations = activ_extractor.get_activations()[layer_name]
 
-        manipulator.set_manipulation(subtract_projection)
-        with manipulator.capture():
+        activ_manipulator.set_manipulation(subtract_projection)
+        with activ_manipulator.capture():
             modified_logits = model(**encodings).logits
 
         targets_mask = compute_targets_mask(encodings)
 
-        top1_accuracy = compute_top_1_accuracy(baseline_logits, modified_logits, targets_mask)
-        top10_agreement = compute_top_k_token_agreement(baseline_logits, modified_logits, targets_mask, top_k=10)
-        kl_div = compute_kl_divergence(baseline_logits, modified_logits, targets_mask)
+        activations_normalized = torch.nn.functional.normalize(activations, dim=-1)
 
-        all_top1_accuracies.append(top1_accuracy.item())
-        all_top10_agreements.append(top10_agreement.item())
-        all_kl_divs.append(kl_div.item())
-
-        proj_scalars_raw = compute_projected_l2_norm(
+        METRICS["projection_mean_raw"] += Loss.projection_l2_norm(
             activations=activations,
             direction=redundant_dir,
             targets_mask=targets_mask,
             normalize=True,
-            reduction="sum",
-        )
+            reduction="mean",
+        ).item()
 
-        activations_normalized = torch.nn.functional.normalize(activations, dim=-1)
-
-        proj_scalars_normalized = compute_projected_l2_norm(
+        METRICS["projection_mean_normalized"] += Loss.projection_l2_norm(
             activations=activations_normalized,
             direction=redundant_dir,
             targets_mask=targets_mask,
             normalize=True,
-            reduction="sum",
+            reduction="mean",
+        ).item()
+
+        METRICS["kl_divergence"] += Loss.kl_divergence(
+            baseline_logits=baseline_logits,
+            modified_logits=modified_logits,
+            targets_mask=targets_mask,
+        ).item()
+
+        METRICS["top1_accuracy"] += Metrics.top1_accuracy(
+            baseline_logits=baseline_logits,
+            modified_logits=modified_logits,
+            targets_mask=targets_mask,
         )
 
-        proj_raw_sum += proj_scalars_raw.float().sum().item()
-        proj_norm_sum += proj_scalars_normalized.float().sum().item()
-        total_tokens += targets_mask.float().sum().item()
+        METRICS["top10_agreement"] += Metrics.topk_agreement(
+            baseline_logits=baseline_logits,
+            modified_logits=modified_logits,
+            targets_mask=targets_mask,
+            top_k=10,
+        )
 
-    avg_top1_accuracy = sum(all_top1_accuracies) / len(all_top1_accuracies)
-    avg_top10_agreement = sum(all_top10_agreements) / len(all_top10_agreements)
-    avg_kl_div = sum(all_kl_divs) / len(all_kl_divs)
+    METRICS = {k: v / num_batches for k, v in METRICS.items()}
 
-    projection_mean_raw = proj_raw_sum / total_tokens
-    projection_mean_normalized = proj_norm_sum / total_tokens
+    METRICS["redundancy_score"] = Metrics.redundancy_score(
+        proj_norm=METRICS["projection_mean_normalized"],
+        top1_accuracy=METRICS["top1_accuracy"],
+        top10_agreement=METRICS["top10_agreement"],
+    )
 
-    return {
-        "top1_accuracy": avg_top1_accuracy,
-        "top10_agreement": avg_top10_agreement,
-        "kl_divergence": avg_kl_div,
-        "projection_mean_raw": projection_mean_raw,
-        "projection_mean_normalized": projection_mean_normalized,
-        "redundancy_score": compute_redundancy_score(projection_mean_normalized, avg_top1_accuracy, avg_top10_agreement),
-    }
+    return METRICS

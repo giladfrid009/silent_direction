@@ -4,7 +4,7 @@ from src.aliases import Conv
 import torch
 import torch.nn.functional as F
 
-from src.activ_manipulator import ActivationManipulator
+from src.activation_extractor import ActivationManipulator
 from src.utils.torch import extract_device
 
 
