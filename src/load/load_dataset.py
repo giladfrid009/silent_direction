@@ -102,7 +102,7 @@ def load_dataset(name: str, shuffle: bool = True) -> tuple[pd.DataFrame, pd.Data
         ds_test = ds_test.shuffle(keep_in_memory=True)  # type: ignore
 
     return (
-        ds_train.to_pandas().reset_index(drop=True),  # type: ignore
-        ds_val.to_pandas().reset_index(drop=True),  # type: ignore
-        ds_test.to_pandas().reset_index(drop=True),  # type: ignore
+        pd.DataFrame(ds_train.to_dict()),
+        pd.DataFrame(ds_val.to_dict()),
+        pd.DataFrame(ds_test.to_dict()),
     )

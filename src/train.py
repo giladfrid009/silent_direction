@@ -16,41 +16,14 @@ def find_redundant_1d_subspace(
     tokenizer: PreTrainedTokenizer,
     layer_name: str,
     conversations: list,
-    num_iterations: int = 200,
+    num_iters: int = 200,
     lr: float = 0.01,
-    projection_weight: float = 0.1,
+    proj_weight: float = 0.1,
     batch_size: int = 32,
 ) -> torch.Tensor:
     """
-    Find a redundant 1D subspace: a direction where activations have large projections,
-    but removing this projection doesn't significantly change the output tokens.
-
-    This identifies linear subspaces that the model "uses" but that are somewhat redundant
-    for the final prediction.
-
-    T is a projection operator: T = v v^T where v is a unit vector (1D projection)
-    For activation e, we subtract T(e) = (v^T e) v from e
-
-    We want to find v such that:
-    - Top-1 token predictions remain unchanged (high agreement) - PRIMARY OBJECTIVE
-    - ||T(e)|| is large for NORMALIZED activations (proportional importance) - SECONDARY
-
-    CRITICAL: v is constrained to be a unit vector (||v|| = 1) throughout optimization.
-    This prevents trivially scaling up the projection by multiplying v by a large constant.
-    We achieve this using reparametrization: optimize unconstrained w, then use v = w/||w||
-
-    Args:
-        model: The language model
-        tokenizer: Tokenizer for the model
-        layer_name: Name of layer to manipulate
-        conversations: List of ALL conversations (will be batched internally)
-        num_iterations: Number of optimization steps
-        lr: Learning rate
-        projection_weight: Weight for projection term (default 0.1, lower = more emphasis on distribution preservation)
-        batch_size: Number of conversations per batch
-
     Returns:
-        Optimized direction vector v (unit vector)
+        (torch.Tensor): The redundant direction found (unit norm).
     """
     device = extract_device(model)
 
@@ -73,9 +46,9 @@ def find_redundant_1d_subspace(
     num_conversations = len(conversations)
     num_batches = (num_conversations + batch_size - 1) // batch_size
 
-    print(f"Searching for redundant 1D subspace over {num_iterations} iterations...")
+    print(f"Searching for redundant 1D subspace over {num_iters} iterations...")
     print(f"Using {num_conversations} conversations in {num_batches} batches of size {batch_size}")
-    print(f"Loss balance: KL-div weight=1.0, projection weight={projection_weight}")
+    print(f"Loss balance: KL-div weight=1.0, projection weight={proj_weight}")
 
     best_score = -float("inf")
     best_direction = None
@@ -84,7 +57,7 @@ def find_redundant_1d_subspace(
         projection = project(activations, direction=w, normalize=True)
         return activations - projection
 
-    for iteration in range(num_iterations):
+    for iteration in range(num_iters):
         batch_indices = torch.randperm(num_conversations)[:batch_size].tolist()
         batch_convs = [conversations[i] for i in batch_indices]
         encodings = tokenize(batch_convs, tokenizer).to(device)
@@ -119,7 +92,7 @@ def find_redundant_1d_subspace(
             normalize=False,
         )
 
-        loss = kl_div - projection_weight * projection_norm
+        loss = kl_div - proj_weight * projection_norm
         loss.backward()
         optim.step()
 
