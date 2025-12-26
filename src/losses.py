@@ -9,16 +9,49 @@ def compute_targets_mask(encodings: BatchEncoding) -> torch.Tensor:
     Computes the mask over input tokens that should be considered for loss computation.
     Outputs that correspond to these tokens are considered; others are ignored.
     """
-    return encodings.attention_mask
+    return encodings.attention_mask.bool()
 
 
 class Loss:
+    
+    @staticmethod
+    def l2_norm(
+        activations: torch.Tensor,
+        targets_mask: torch.Tensor,
+        reduction: str = "mean",
+    ) -> torch.Tensor:
+        """
+        Compute the L2 norm of activations at target positions.
+
+        Args:
+            activations: tensor of activations, shape (batch_size, seq_len, hidden_size)
+            targets_mask: mask indicating target positions, shape (batch_size, seq_len)
+            reduce: reduction method, either "mean", "sum" or "none"
+
+        Returns:
+            L2 norm of the activations.
+            - If reduce is "none", returns tensor of norms for each position, of shape (num_target_positions,)
+            - If reduce is "mean" or "sum", returns a single scalar tensor.
+        """
+        assert reduction in {"mean", "sum", "none"}, f"Invalid reduce method: {reduction}"
+
+        activations = activations[targets_mask].view(-1, activations.size(-1))
+        norms = torch.norm(activations, dim=-1)
+
+        if reduction == "mean":
+            return norms.mean()
+        if reduction == "sum":
+            return norms.sum()
+        if reduction == "none":
+            return norms
+
+        raise ValueError(f"Invalid reduce method: {reduction}")
+    
     @staticmethod
     def projection_l2_norm(
         activations: torch.Tensor,
         direction: torch.Tensor,
         targets_mask: torch.Tensor,
-        normalize: bool = False,
         reduction: str = "mean",
     ) -> torch.Tensor:
         """
@@ -37,12 +70,8 @@ class Loss:
         """
         assert reduction in {"mean", "sum", "none"}, f"Invalid reduce method: {reduction}"
 
-        if normalize:
-            direction = F.normalize(direction, dim=-1)
-
-        targets_mask = targets_mask.bool()
+        direction = F.normalize(direction, dim=-1)
         activations = activations[targets_mask].view(-1, activations.size(-1))
-
         norms = torch.abs(activations @ direction)
 
         if reduction == "mean":
@@ -55,30 +84,81 @@ class Loss:
         raise ValueError(f"Invalid reduce method: {reduction}")
 
     @staticmethod
-    def projection_variance(
+    def total_variance(
         activations: torch.Tensor,
-        direction: torch.Tensor,
         targets_mask: torch.Tensor,
-        normalize: bool = False,
+        mean_activation: torch.Tensor,
+        reduction: str = "mean",
     ) -> torch.Tensor:
         """
-        Compute the variance of the projection of activations onto a given direction.
-        Variance computed along the
+        Compute the total variance of activations around a given mean activation.
+        Variance computed along the hidden_size dimension.
 
         Args:
             activations: tensor of activations, shape (batch_size, seq_len, hidden_size)
+            targets_mask: mask indicating target positions, shape (batch_size, seq_len)
+            mean_activation: mean activation vector, shape (hidden_size,)
+
+        Returns:
+            variance of the activations
+        """
+        assert reduction in {"mean", "sum", "none"}, f"Invalid reduce method: {reduction}"
+
+        activations = activations[targets_mask].view(-1, activations.size(-1))
+        diffs = activations - mean_activation.unsqueeze(0)
+
+        # total variance is mean squared distance from the mean activation
+        var = torch.norm(diffs, dim=-1) ** 2
+
+        if reduction == "mean":
+            return var.mean()
+        if reduction == "sum":
+            return var.sum()
+        if reduction == "none":
+            return var
+
+        raise ValueError(f"Invalid reduce method: {reduction}")
+
+    @staticmethod
+    def projection_total_variance(
+        activations: torch.Tensor,
+        direction: torch.Tensor,
+        targets_mask: torch.Tensor,
+        mean_activation: torch.Tensor,
+        reduction: str = "mean",
+    ) -> torch.Tensor:
+        """
+        Compute the total variance of the projections of activations onto a given direction.
+
+        Args:
+            activations: tensor of activations, shape (batch_size, seq_len, hidden_size)
+            targets_mask: mask indicating target positions, shape (batch_size, seq_len)
             direction: direction vector to project onto, shape (hidden_size,)
+            mean_activation: mean activation vector, shape (hidden_size,)
 
         Returns:
             variance of the projected activations
         """
-        if normalize:
-            direction = F.normalize(direction, dim=-1)
 
-        targets_mask = targets_mask.bool()
+        assert reduction in {"mean", "sum", "none"}, f"Invalid reduce method: {reduction}"
+
+        direction = F.normalize(direction, dim=-1)
+
+        # project both activations and mean_activation
         activations = activations[targets_mask].view(-1, activations.size(-1))
+        projected_activations = (activations @ direction).unsqueeze(-1) * direction
+        projected_mean = (mean_activation @ direction).unsqueeze(-1) * direction
 
-        return torch.var(activations @ direction, unbiased=True)
+        var = torch.norm(projected_activations - projected_mean, dim=-1) ** 2
+
+        if reduction == "mean":
+            return var.mean()
+        if reduction == "sum":
+            return var.sum()
+        if reduction == "none":
+            return var
+
+        raise ValueError(f"Invalid reduce method: {reduction}")
 
     @staticmethod
     def kl_divergence(

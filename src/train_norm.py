@@ -11,7 +11,7 @@ from src.losses import Loss, compute_targets_mask
 from src.model_helpers import project
 
 
-def find_redundant_1d_subspace(
+def find_redundant_norm_subspace(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizer,
     layer_name: str,
@@ -89,7 +89,6 @@ def find_redundant_1d_subspace(
             activations=activations_normalized,
             direction=v,
             targets_mask=targets_mask,
-            normalize=False,
         )
 
         loss = kl_div - proj_weight * projection_norm
@@ -111,8 +110,8 @@ def find_redundant_1d_subspace(
 
         score_val = Metrics.redundancy_score(
             proj_norm=projection_norm.item(),
-            top1_accuracy=top1_accuracy,
-            top10_agreement=top10_agreement,
+            top1_acc=top1_accuracy,
+            top10_agr=top10_agreement,
         )
 
         if score_val > best_score:
@@ -192,7 +191,6 @@ def validate_redundant_subspace(
             activations=activations,
             direction=redundant_dir,
             targets_mask=targets_mask,
-            normalize=True,
             reduction="mean",
         ).item()
 
@@ -200,7 +198,6 @@ def validate_redundant_subspace(
             activations=activations_normalized,
             direction=redundant_dir,
             targets_mask=targets_mask,
-            normalize=True,
             reduction="mean",
         ).item()
 
@@ -227,8 +224,8 @@ def validate_redundant_subspace(
 
     METRICS["redundancy_score"] = Metrics.redundancy_score(
         proj_norm=METRICS["projection_mean_normalized"],
-        top1_accuracy=METRICS["top1_accuracy"],
-        top10_agreement=METRICS["top10_agreement"],
+        top1_acc=METRICS["top1_accuracy"],
+        top10_agr=METRICS["top10_agreement"],
     )
 
     return METRICS

@@ -3,7 +3,7 @@ import torch
 
 class Metrics:
     @staticmethod
-    def redundancy_score(proj_norm: float, top1_accuracy: float, top10_agreement: float) -> float:
+    def redundancy_score(proj_norm: float, top1_acc: float, top10_agr: float) -> float:
         """
         Compute redundancy score for a direction.
 
@@ -18,7 +18,7 @@ class Metrics:
         Returns:
             Redundancy score (higher is better)
         """
-        return proj_norm * top1_accuracy * top10_agreement
+        return proj_norm * top1_acc * top10_agr
 
     @staticmethod
     @torch.inference_mode()
