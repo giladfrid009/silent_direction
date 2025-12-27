@@ -23,7 +23,7 @@ def project(activations: torch.Tensor, direction: torch.Tensor, normalize: bool 
     return projection
 
 
-def tokenize(convs: list[Conv], tokenizer: PreTrainedTokenizer) -> BatchEncoding:
+def tokenize(convs: list[Conv], tokenizer: PreTrainedTokenizer, max_length: int = 512, **kwargs) -> BatchEncoding:
     tokenizer.padding_side = "left"
     tokenizer.truncation_side = "right"
     return tokenizer.apply_chat_template(
@@ -32,10 +32,11 @@ def tokenize(convs: list[Conv], tokenizer: PreTrainedTokenizer) -> BatchEncoding
         padding=True,
         padding_side="left",
         return_dict=True,
-        max_length=512,
+        max_length=max_length,
         truncation=True,
         return_tensors="pt",
         enable_thinking=False,
+        **kwargs,
     )  # type: ignore
 
 

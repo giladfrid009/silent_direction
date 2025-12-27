@@ -11,7 +11,7 @@ from src.losses import Loss, compute_targets_mask
 from src.model_helpers import project
 
 
-@torch.inference_mode()
+@torch.no_grad()
 def compute_empirical_mean(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizer,
