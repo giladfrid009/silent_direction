@@ -99,7 +99,6 @@ class TargetedModel:
     def forward(self, encodings: BatchEncoding, **kwargs):
         return self.model(**encodings, **kwargs)
 
-    # TODO: VERIFY THAT IS CORRECT
     @torch.inference_mode()
     def generate(
         self,
@@ -134,55 +133,8 @@ class TargetedModel:
             **kwargs,
         )
 
-        # For each item, strip the prompt part using its true (unpadded) length
-        prompt_lens = attention_mask.sum(dim=1).tolist()
-
-        generated_texts: list[str] = []
-        for i, prompt_len in enumerate(prompt_lens):
-            gen_ids = outputs[i][prompt_len:]
-            text = self.tokenizer.decode(gen_ids, skip_special_tokens=True)
-            generated_texts.append(text)
-
-        return generated_texts
-
-
-# @torch.inference_mode()
-# def generate(
-#     self,
-#     prompts: list[Conv] | list[str],
-#     max_new_tokens: int = 100,
-#     **kwargs,
-# ) -> list[str]:
-#     """
-#     Generate text from prompts using the model and tokenizer.
-
-#     Args:
-#         prompts: List of prompt strings
-#         max_new_tokens: Maximum tokens to generate
-#     Returns:
-#         List of generated texts
-#     """
-#     # Generate
-#     generated_texts = []
-
-#     for conv in prompts:
-#         # Tokenize prompt only (no target)
-#         tokens = self.tokenize([conv]).to(self.device)
-#         input_ids = tokens.input_ids
-#         attention_mask = tokens.attention_mask
-
-#         # Generate with or without ablation
-#         outputs = self.model.generate(
-#             input_ids=input_ids,
-#             attention_mask=attention_mask,
-#             max_new_tokens=max_new_tokens,
-#             pad_token_id=self.tokenizer.pad_token_id or self.tokenizer.eos_token_id,
-#             **kwargs,
-#         )
-
-#         # Decode (skip prompt tokens)
-#         generated_ids = outputs[0][input_ids.shape[1] :]
-#         generated_text = self.tokenizer.decode(generated_ids, skip_special_tokens=True)
-#         generated_texts.append(generated_text)
-
-#     return generated_texts
+        # Decode the generated tokens (only the newly generated part)
+        return self.tokenizer.batch_decode(
+            outputs[:, input_ids.shape[1] :],
+            skip_special_tokens=True,
+        )

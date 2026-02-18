@@ -155,7 +155,7 @@ class Experiment(ABC):
         stop_args.add_argument(
             "--train_patience",
             type=int,
-            default=10,
+            default=20,
             metavar="NUM",
             help="Early stopping patience in number of evaluations.",
         )
@@ -218,6 +218,7 @@ class Experiment(ABC):
         metadata = {
             "model_name": model_name,
             "layer_name": layer_name,
+            "dataset_name": self.args().dataset,
             "metrics": metrics,
         }
 
@@ -347,7 +348,7 @@ class Experiment(ABC):
                         metrics=metrics,
                         metric_tracker=metric_tracker,
                     )
-                
+
                 else:
                     print(f"Test run - {layer_name} results:")
                     print(json.dumps(metrics, indent=4, default=str))
