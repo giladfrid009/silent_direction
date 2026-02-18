@@ -3,12 +3,9 @@ import pathlib
 import argparse
 import random
 import torch
-import fnmatch
-from tqdm.auto import tqdm
 from lm_eval import evaluator
 from lm_eval.models.huggingface import HFLM
 import json
-import logging
 from typing import Any
 
 # set pythonpath to the main module directory

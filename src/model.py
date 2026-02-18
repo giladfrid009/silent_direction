@@ -107,11 +107,10 @@ class TargetedModel:
         **kwargs,
     ) -> list[str]:
         """
-        Batched generation.
-
         Args:
             prompts: List of prompt objects/strings
             max_new_tokens: Maximum tokens to generate per prompt
+            **kwargs: Additional generation kwargs to pass to model.generate()
         Returns:
             List of generated texts (one per prompt)
         """
@@ -119,12 +118,10 @@ class TargetedModel:
             logger.warning("No prompts provided for generation")
             return []
 
-        # Tokenize the whole batch
         encodings = self.tokenize(prompts)
         input_ids: torch.Tensor = encodings.input_ids  # [B, L]
         attention_mask: torch.Tensor = encodings.attention_mask  # [B, L]
 
-        # Generate once for the whole batch
         outputs = self.model.generate(
             input_ids=input_ids,
             attention_mask=attention_mask,
@@ -133,7 +130,6 @@ class TargetedModel:
             **kwargs,
         )
 
-        # Decode the generated tokens (only the newly generated part)
         return self.tokenizer.batch_decode(
             outputs[:, input_ids.shape[1] :],
             skip_special_tokens=True,
