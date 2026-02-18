@@ -21,6 +21,7 @@ def load_raw_dataset(name: str) -> DatasetDict:
     """
     Loads and returns a dataset by name. Each dataset is expected to have the following columns:
     - "prompt": The input user prompt to the model.
+        Either a string or a list of alternating user/assistant messages.
 
     If the dataset does not have predefined splits, it will be loaded as a single "train" split.
     The user can then split it into training, validation, and test sets as needed.
@@ -50,6 +51,7 @@ def load_raw_dataset(name: str) -> DatasetDict:
             return True
 
         ds_train = ds_train.filter(filter_fn)
+        ds_train = ds_train.rename_columns({"chosen": "prompt", "prompt": "input"})
 
         # split eval from train, eval of size 2000
         split_dict = ds_train.train_test_split(test_size=2000, seed=42)

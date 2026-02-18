@@ -1,19 +1,10 @@
 import math
 import torch
 import torch.nn.functional as F
-from transformers.tokenization_utils_base import BatchEncoding
 
-
-def compute_targets_mask(encodings: BatchEncoding) -> torch.Tensor:
-    """
-    Computes the mask over input tokens that should be considered for loss computation.
-    Outputs that correspond to these tokens are considered; others are ignored.
-    """
-    return encodings.attention_mask.bool()
 
 
 class Loss:
-    
     @staticmethod
     def l2_norm(
         activations: torch.Tensor,
@@ -46,7 +37,7 @@ class Loss:
             return norms
 
         raise ValueError(f"Invalid reduce method: {reduction}")
-    
+
     @staticmethod
     def projection_l2_norm(
         activations: torch.Tensor,

@@ -1,0 +1,188 @@
+from transformers.tokenization_utils_base import BatchEncoding
+from transformers import PreTrainedModel, PreTrainedTokenizer
+from src.aliases import Conv
+from src.utils.torch import extract_device
+from src.utils.logging import create_logger
+import torch
+import torch.nn.functional as F
+
+
+logger = create_logger(__name__)
+
+
+def project(activations: torch.Tensor, direction: torch.Tensor, normalize: bool = False) -> torch.Tensor:
+    """
+    Args:
+        activations: tensor of activations, shape (batch_size, seq_len, hidden_size)
+        direction: direction vector to project onto, shape (hidden_size,)
+        normalize: whether to normalize the direction vector
+    """
+    if normalize:
+        direction = F.normalize(direction, dim=-1)
+
+    coeffs = activations @ direction
+    projection = coeffs.unsqueeze(-1).expand_as(activations) * direction
+    return projection
+
+
+class TargetedModel:
+    def __init__(
+        self,
+        model: PreTrainedModel,
+        tokenizer: PreTrainedTokenizer,
+        is_chat: bool = True,
+    ):
+        if is_chat and (not hasattr(tokenizer, "chat_template")) or tokenizer.chat_template is None:
+            raise ValueError("Tokenizer does not have a chat template, but is_chat=True")
+        elif not is_chat and hasattr(tokenizer, "chat_template") and tokenizer.chat_template is not None:
+            logger.warning("Tokenizer has a chat template, but is_chat=False.")
+
+        self.model = model.eval()
+        self.tokenizer = tokenizer
+        self.is_chat = is_chat
+        self.device = extract_device(model)
+        self.dtype = self.model.dtype
+
+        self.tokenizer.padding_side = "left"
+        self.tokenizer.truncation_side = "right"
+
+    def get_hparams(self) -> dict:
+        return {
+            "model_name": self.model.name_or_path,
+            "tokenizer_name": self.tokenizer.name_or_path,
+            "is_chat": self.is_chat,
+        }
+
+    def tokenize(
+        self,
+        convs: list[Conv] | list[str],
+        max_length: int = 512,
+        **kwargs,
+    ) -> BatchEncoding:
+
+        if len(convs) == 0:
+            raise ValueError("No conversations provided for tokenization")
+
+        if self.is_chat and (not isinstance(convs[0], list) or not all(isinstance(c, dict) for c in convs[0])):
+            raise ValueError("Convs should be a list of Conv (dict with 'role' and 'content') when is_chat=True")
+
+        if not self.is_chat and not isinstance(convs[0], str):
+            raise ValueError("Convs should be a list of strings when is_chat=False")
+
+        if self.is_chat:
+            encodings = self.tokenizer.apply_chat_template(
+                convs,
+                add_generation_prompt=True,
+                padding=True,
+                padding_side="left",
+                return_dict=True,
+                max_length=max_length,
+                truncation=True,
+                return_tensors="pt",
+                enable_thinking=False,
+                **kwargs,
+            )  # type: ignore
+        else:
+            encodings = self.tokenizer(
+                convs,
+                padding=True,
+                padding_side="left",
+                return_dict=True,
+                max_length=max_length,
+                truncation=True,
+                return_tensors="pt",
+                **kwargs,
+            )
+
+        return encodings.to(self.device)
+
+    def forward(self, encodings: BatchEncoding, **kwargs):
+        return self.model(**encodings, **kwargs)
+
+    # TODO: VERIFY THAT IS CORRECT
+    @torch.inference_mode()
+    def generate(
+        self,
+        prompts: list[Conv] | list[str],
+        max_new_tokens: int = 100,
+        **kwargs,
+    ) -> list[str]:
+        """
+        Batched generation.
+
+        Args:
+            prompts: List of prompt objects/strings
+            max_new_tokens: Maximum tokens to generate per prompt
+        Returns:
+            List of generated texts (one per prompt)
+        """
+        if len(prompts) == 0:
+            logger.warning("No prompts provided for generation")
+            return []
+
+        # Tokenize the whole batch
+        encodings = self.tokenize(prompts)
+        input_ids: torch.Tensor = encodings.input_ids  # [B, L]
+        attention_mask: torch.Tensor = encodings.attention_mask  # [B, L]
+
+        # Generate once for the whole batch
+        outputs = self.model.generate(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+            max_new_tokens=max_new_tokens,
+            pad_token_id=self.tokenizer.pad_token_id or self.tokenizer.eos_token_id,
+            **kwargs,
+        )
+
+        # For each item, strip the prompt part using its true (unpadded) length
+        prompt_lens = attention_mask.sum(dim=1).tolist()
+
+        generated_texts: list[str] = []
+        for i, prompt_len in enumerate(prompt_lens):
+            gen_ids = outputs[i][prompt_len:]
+            text = self.tokenizer.decode(gen_ids, skip_special_tokens=True)
+            generated_texts.append(text)
+
+        return generated_texts
+
+
+# @torch.inference_mode()
+# def generate(
+#     self,
+#     prompts: list[Conv] | list[str],
+#     max_new_tokens: int = 100,
+#     **kwargs,
+# ) -> list[str]:
+#     """
+#     Generate text from prompts using the model and tokenizer.
+
+#     Args:
+#         prompts: List of prompt strings
+#         max_new_tokens: Maximum tokens to generate
+#     Returns:
+#         List of generated texts
+#     """
+#     # Generate
+#     generated_texts = []
+
+#     for conv in prompts:
+#         # Tokenize prompt only (no target)
+#         tokens = self.tokenize([conv]).to(self.device)
+#         input_ids = tokens.input_ids
+#         attention_mask = tokens.attention_mask
+
+#         # Generate with or without ablation
+#         outputs = self.model.generate(
+#             input_ids=input_ids,
+#             attention_mask=attention_mask,
+#             max_new_tokens=max_new_tokens,
+#             pad_token_id=self.tokenizer.pad_token_id or self.tokenizer.eos_token_id,
+#             **kwargs,
+#         )
+
+#         # Decode (skip prompt tokens)
+#         generated_ids = outputs[0][input_ids.shape[1] :]
+#         generated_text = self.tokenizer.decode(generated_ids, skip_special_tokens=True)
+#         generated_texts.append(generated_text)
+
+#     return generated_texts

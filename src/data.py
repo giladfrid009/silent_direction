@@ -6,11 +6,6 @@ import pandas as pd
 class TableLoader:
     """
     Iterate over a DataFrame in row-wise batches.
-
-    Standard columns which are expected to be present in the DataFrame:
-    - 'prompt' (str): Input prompt for the model.
-    - 'response' (str): Model response or output, should be present for evaluation.
-    - 'target' (str): Target response of the model, should be present for training.
     """
 
     def __init__(
@@ -121,19 +116,38 @@ class TableLoader:
 
         return TableLoader(**attrs)
 
-    def set_column(self, col_name: str, values: list[Any]) -> None:
-        """
-        Add or override a column in the DataFrame with the specified name and values.
 
-        Args:
-            col_name (str): Name of the new column.
-            values (list[Any]): Values to be added in the new column.
-        """
+class TableIterator:
+    """
+    A simple wrapper around TableLoader to provide an iterator interface.
+    """
 
-        if self.shuffle or self.drop_last:
-            raise ValueError("Cannot add column while `shuffle` or `drop_last` is enabled")
+    def __init__(
+        self,
+        table_loader: TableLoader,
+        num_batches: int | None = None,
+        num_epochs: int | None = 1,
+    ) -> None:
 
-        if len(values) != len(self.df):
-            raise ValueError(f"Length of values ({len(values)}) does not match DataFrame length ({len(self.df)})")
+        total_steps = len(table_loader)
+        if num_epochs is not None and num_batches is not None:
+            total_steps = min(num_batches, num_epochs * len(table_loader))
+        elif num_epochs is not None:
+            total_steps = num_epochs * len(table_loader)
+        elif num_batches is not None:
+            total_steps = num_batches
 
-        self.df[col_name] = values
+        self.table_loader = table_loader
+        self.total_steps = total_steps
+        self.current_step = 0
+
+    def __iter__(self) -> Generator[dict[str, list[Any]], None, None]:
+        while self.current_step < self.total_steps:
+            for batch in self.table_loader:
+                if self.current_step >= self.total_steps:
+                    break
+                yield batch
+                self.current_step += 1
+
+    def __len__(self) -> int:
+        return self.total_steps

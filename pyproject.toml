@@ -36,4 +36,7 @@ dependencies = [
     "seaborn>=0.13.2",
     "scipy>=1.16.2",
     "lm-eval[hf]>=0.4.9.2",
+    "wandb>=0.25.0",
+    "langdetect>=1.0.9",
+    "immutabledict>=4.3.1",
 ]
