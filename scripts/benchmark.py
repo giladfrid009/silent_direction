@@ -276,6 +276,7 @@ def main(args: argparse.Namespace):
 
         for i, (meta, path) in enumerate(zip(metas, paths)):
             for j, task_name in enumerate(args.tasks):
+                print()
                 logger.info(f"Processing meta (model, layer) = ({meta.model_name}, {meta.layer_name}) ({i + 1}/{len(metas)})")
                 logger.info(f"Running benchmark for task: {task_name} ({j + 1}/{len(args.tasks)})")
 
@@ -292,9 +293,14 @@ def main(args: argparse.Namespace):
                     logger.error(f"Error running benchmark for task {task_name} with meta {path}: {e}. Skipping...")
                     continue
 
-                task_results.pop("configs", None)
-                result_path = pathlib.Path(path).parent / "benchmarks" / f"{task_name}.json"
-                save_results(task_results, path=result_path)
+                if not args.test_run:
+                    task_results.pop("configs", None)
+                    result_path = pathlib.Path(path).parent.parent / "benchmarks" / f"{task_name}.json"
+                    save_results(task_results, path=result_path)
+
+                else:
+                    print(f"Test run - {task_name} results:")
+                    print(json.dumps(task_results["results"], indent=4, default=str))
 
 
 if __name__ == "__main__":

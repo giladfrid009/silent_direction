@@ -115,7 +115,7 @@ class Experiment(ABC):
         parser.add_argument(
             "--project_name",
             type=str,
-            default="SILENT-DIRECTION",
+            default="silent-direction",
             metavar="NAME",
             help="The name of the project for logging purposes.",
         )
@@ -231,6 +231,14 @@ class Experiment(ABC):
 
         logger.info(f"Saved metadata to {meta_dir} folder.")
 
+        bench_dir = pathlib.Path(log_dir) / "benchmarks"
+        bench_dir.mkdir(parents=True, exist_ok=True)
+
+        with open(bench_dir / "train_metrics.json", "w") as f:
+            json.dump({"results": {"train_metrics": metrics}}, f, indent=4)
+
+        logger.info(f"Saved metrics results to {bench_dir} folder.")
+
     @abstractmethod
     def run_training(
         self,
@@ -339,6 +347,10 @@ class Experiment(ABC):
                         metrics=metrics,
                         metric_tracker=metric_tracker,
                     )
+                
+                else:
+                    print(f"Test run - {layer_name} results:")
+                    print(json.dumps(metrics, indent=4, default=str))
 
     def main(self):
         try:

@@ -170,9 +170,14 @@ def main(args: argparse.Namespace):
                 logger.error(f"Error running benchmark for task {task_name}: {e}.")
                 continue
 
-            task_results.pop("configs", None)
-            result_path = pathlib.Path(args.output_dir) / model_name.split("/")[-1] / "benchmarks" / f"{task_name}.json"
-            save_results(task_results, path=result_path)
+            if not args.test_run:
+                task_results.pop("configs", None)
+                result_path = pathlib.Path(args.output_dir) / model_name.split("/")[-1] / "benchmarks" / f"{task_name}.json"
+                save_results(task_results, path=result_path)
+                
+            else:
+                print(f"Test run - {task_name} results:")
+                print(json.dumps(task_results["results"], indent=4, default=str))
 
 
 if __name__ == "__main__":
