@@ -7,6 +7,10 @@ import torch
 logger = create_logger(__name__)
 
 
+def redundancy_score_norm(proj_norm: float, top1_acc: float, top10_agr: float) -> float:
+    return proj_norm * top1_acc * top10_agr
+
+
 @torch.no_grad()
 def probe_layer_dim(targeted_model: TargetedModel, layer: str) -> int:
 

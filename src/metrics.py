@@ -3,24 +3,6 @@ import torch
 
 class Metrics:
     @staticmethod
-    def redundancy_score(proj_norm: float, top1_acc: float, top10_agr: float) -> float:
-        """
-        Compute redundancy score for a direction.
-
-        This is the canonical metric used everywhere to evaluate how good a redundant direction is.
-        Higher score = better redundant direction (high projection, high preservation of outputs).
-
-        Args:
-            projection_norm: Mean normalized projection magnitude (0-1 range)
-            top1_accuracy: Fraction of positions where top-1 token matches (0-1 range)
-            top10_agreement: Fraction of top-10 tokens that overlap (0-1 range)
-
-        Returns:
-            Redundancy score (higher is better)
-        """
-        return proj_norm * top1_acc * top10_agr
-
-    @staticmethod
     @torch.inference_mode()
     def topk_agreement(
         baseline_logits: torch.Tensor,

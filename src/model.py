@@ -4,25 +4,9 @@ from src.aliases import Conv
 from src.utils.torch import extract_device
 from src.utils.logging import create_logger
 import torch
-import torch.nn.functional as F
 
 
 logger = create_logger(__name__)
-
-
-def project(activations: torch.Tensor, direction: torch.Tensor, normalize: bool = False) -> torch.Tensor:
-    """
-    Args:
-        activations: tensor of activations, shape (batch_size, seq_len, hidden_size)
-        direction: direction vector to project onto, shape (hidden_size,)
-        normalize: whether to normalize the direction vector
-    """
-    if normalize:
-        direction = F.normalize(direction, dim=-1)
-
-    coeffs = activations @ direction
-    projection = coeffs.unsqueeze(-1).expand_as(activations) * direction
-    return projection
 
 
 class TargetedModel:
@@ -34,6 +18,7 @@ class TargetedModel:
     ):
         if is_chat and (not hasattr(tokenizer, "chat_template")) or tokenizer.chat_template is None:
             raise ValueError("Tokenizer does not have a chat template, but is_chat=True")
+        
         elif not is_chat and hasattr(tokenizer, "chat_template") and tokenizer.chat_template is not None:
             logger.warning("Tokenizer has a chat template, but is_chat=False.")
 

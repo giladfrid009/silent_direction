@@ -4,11 +4,15 @@ from tqdm.auto import tqdm
 from src.model import TargetedModel
 from src.data import TableLoader, TableIterator
 from src.activation_extractor import ActivationExtractor
-from src.functional import project, compute_targets_mask
+from src.functional import compute_targets_mask
 from src.utils.logging import create_logger
 
 
 logger = create_logger(__name__)
+
+
+def redundancy_score_principal(proj_var: float, top1_acc: float, top10_agr: float) -> float:
+    return proj_var * top1_acc * top10_agr
 
 
 @torch.no_grad()
@@ -33,7 +37,7 @@ def probe_layer_dim(targeted_model: TargetedModel, layer: str) -> int:
 
 @torch.no_grad()
 def compute_empirical_mean(
-    model: TargetedModel,
+    targeted_model: TargetedModel,
     layer: str,
     dl: TableLoader,
     iterations: int = 200,
@@ -42,13 +46,13 @@ def compute_empirical_mean(
     Computes the empirical mean of activations at the specified layer over the given conversations.
     The mean is computed over all token positions and all conversations.
 
-    Returns:
-        mean_activation: The empirical mean activation vector (shape: [hidden_size])
-        mean_activation_normalized: The empirical mean of the normalized activations (shape: [hidden_size])
+    Returns: 
+        - mean_activation (torch.Tensor): The empirical mean activation vector (shape: [hidden_size])
+        - mean_activation_normalized (torch.Tensor): The empirical mean of the normalized activations (shape: [hidden_size])
     """
-    extractor = ActivationExtractor(model, layer)
-    mean_act: torch.Tensor = None
-    mean_act_norm: torch.Tensor = None
+    extractor = ActivationExtractor(targeted_model.model, layer)
+    mean_act: torch.Tensor = None  # type: ignore
+    mean_act_norm: torch.Tensor = None  # type: ignore
 
     count_total = 0
     iterations = min(iterations, len(dl))
@@ -56,11 +60,11 @@ def compute_empirical_mean(
 
     for batch in pbar:
         conversations = batch["prompt"]
-        encodings = model.tokenize(conversations)
+        encodings = targeted_model.tokenize(conversations)
         targets_mask = compute_targets_mask(encodings)
 
         with extractor.capture():
-            _ = model.forward(encodings)
+            _ = targeted_model.forward(encodings)
             acts = extractor.get_activations()[layer]  # Shape: (batch_size, seq_len, hidden_size)
             acts = acts[targets_mask]  # Shape: (num_valid_tokens, hidden_size)
             acts_norm = torch.nn.functional.normalize(acts, dim=-1)
@@ -76,6 +80,7 @@ def compute_empirical_mean(
             mean_act_norm = torch.zeros_like(acts_sum)
 
         # update running mean
+        # TODO: SHOULD WE JUST REPLACE IT WITH REGULAR SUMMATION AND COMPUTE MEAN AT THE END?
         mean_act = mean_act * (count_total / (count_batch + count_total)) + acts_sum / (count_batch + count_total)
         mean_act_norm = mean_act_norm * (count_total / (count_batch + count_total)) + acts_sum_norm / (count_batch + count_total)
         count_total += count_batch

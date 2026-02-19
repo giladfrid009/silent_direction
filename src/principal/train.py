@@ -7,21 +7,19 @@ from src.activation_extractor import ActivationExtractor, ActivationManipulator
 from src.metrics import Metrics
 from src.losses import Loss
 from src.functional import project, compute_targets_mask
-from src.principal.utils import probe_layer_dim, compute_empirical_mean
+from src.principal.utils import probe_layer_dim, compute_empirical_mean, redundancy_score_principal
+from src.config import StopCriteria
 
 
-def find_redundant_principle_subspace(
+def train_principal(
     targeted_model: TargetedModel,
     layer: str,
     dl_train: TableLoader,
-    num_steps: int = 200,
+    stop_criteria: StopCriteria,
     learning_rate: float = 0.01,
     proj_weight: float = 0.1,
 ) -> tuple[torch.Tensor, list[dict[str, float]]]:
-    """
-    Returns:
-        (torch.Tensor): The redundant direction found (unit norm).
-    """
+
     layer_dim = probe_layer_dim(targeted_model, layer)
     w = torch.randn(layer_dim, device=targeted_model.device, dtype=targeted_model.dtype, requires_grad=True)
     optim = torch.optim.Adam([w], lr=learning_rate)
@@ -36,18 +34,21 @@ def find_redundant_principle_subspace(
     extractor = ActivationExtractor(targeted_model.model, layer)
     manipulator = ActivationManipulator(targeted_model.model, layer, manipulation_fn=subtract_projection)
 
-    _, mean_activ = compute_empirical_mean(
-        model=targeted_model,
+    mean_activ_raw, mean_activ_norm = compute_empirical_mean(
+        targeted_model=targeted_model,
         layer=layer,
         dl=dl_train,
-        iterations=100,
+        iterations=100,  # TODO: currently hard-coded
     )
-    
-    num_steps = min(num_steps, len(dl_train))
-    pbar = tqdm(TableIterator(dl_train, num_batches=num_steps), desc="Training", leave=False)
+
     history = []
+    num_steps = min(stop_criteria.max_steps, len(dl_train))
+    pbar = tqdm(TableIterator(dl_train, num_batches=num_steps), desc="Training", leave=False)
 
     for batch in pbar:
+        if stop_criteria.should_stop():
+            break
+
         conversations = batch["prompt"]
         encodings = targeted_model.tokenize(conversations)
         targets_mask = compute_targets_mask(encodings)
@@ -60,7 +61,6 @@ def find_redundant_principle_subspace(
             activations = extractor.get_activations()[layer].detach()
             activations_normalized = torch.nn.functional.normalize(activations, dim=-1)
 
-        # manipulator.set_manipulation(subtract_projection)
         with manipulator.capture():
             modified_logits = targeted_model.forward(encodings).logits
 
@@ -71,55 +71,55 @@ def find_redundant_principle_subspace(
             top_k=None,
         )
 
-        proj_var = Loss.projection_total_variance(
+        proj_var_rel = Loss.projection_total_variance(
             activations=activations_normalized,
             direction=v,
             targets_mask=targets_mask,
-            mean_activation=mean_activ,
+            mean_activation=mean_activ_norm,
         )
 
-        top10_agreement = Metrics.topk_agreement(
+        top10_agr = Metrics.topk_agreement(
             baseline_logits=baseline_logits.detach(),
             modified_logits=modified_logits.detach(),
             targets_mask=targets_mask,
             top_k=10,
         )
 
-        top1_accuracy = Metrics.top1_accuracy(
+        top1_acc = Metrics.top1_accuracy(
             baseline_logits=baseline_logits.detach(),
             modified_logits=modified_logits.detach(),
             targets_mask=targets_mask,
         )
 
-        score_val = Metrics.redundancy_score(
-            proj_norm=proj_var.item(),
-            top1_acc=top1_accuracy,
-            top10_agr=top10_agreement,
+        score_val = redundancy_score_principal(
+            proj_var=proj_var_rel.item(),
+            top1_acc=top1_acc,
+            top10_agr=top10_agr,
         )
 
         if score_val > best_score:
             best_score = score_val
             best_direction = v.detach().clone()
 
-        loss = kl_div - proj_weight * proj_var
+        # compute loss and update
+        loss = kl_div - proj_weight * proj_var_rel
         loss.backward()
         optim.step()
-        
+
         METRICS = {
             "loss": loss.item(),
             "kl_div": kl_div.item(),
-            "proj_var": proj_var.item(),
-            "top1_acc": top1_accuracy,
-            "top10_agr": top10_agreement,
-            "redundancy_score": score_val,
+            "proj_var_rel": proj_var_rel.item(),
+            "top1_acc": top1_acc,
+            "top10_agr": top10_agr,
+            "score": score_val,
+            "best_score": best_score,
         }
 
         history.append(METRICS)
         pbar.set_postfix({k: f"{v:.4f}" for k, v in METRICS.items()})
+        stop_criteria.update(value=score_val)
 
     pbar.close()
-
-    if best_direction is None:
-        best_direction = v.detach().clone()
 
     return best_direction, history

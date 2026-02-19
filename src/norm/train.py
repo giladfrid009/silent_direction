@@ -7,7 +7,7 @@ from src.activation_extractor import ActivationExtractor, ActivationManipulator
 from src.metrics import Metrics
 from src.losses import Loss
 from src.functional import project, compute_targets_mask
-from src.norm.utils import probe_layer_dim
+from src.norm.utils import probe_layer_dim, redundancy_score_norm
 from src.config import StopCriteria
 
 
@@ -64,7 +64,7 @@ def train_norm(
             top_k=None,
         )
 
-        proj_norm = Loss.projection_l2_norm(
+        proj_l2_rel = Loss.projection_l2_norm(
             activations=activations_normalized,
             direction=v,
             targets_mask=targets_mask,
@@ -84,8 +84,8 @@ def train_norm(
             targets_mask=targets_mask,
         )
 
-        score_val = Metrics.redundancy_score(
-            proj_norm=proj_norm.item(),
+        score_val = redundancy_score_norm(
+            proj_norm=proj_l2_rel.item(),
             top1_acc=top1_acc,
             top10_agr=top10_agr,
         )
@@ -94,18 +94,19 @@ def train_norm(
             best_score = score_val
             best_direction = v.detach().clone()
 
-        # compute loss and step
-        loss = kl_div - proj_weight * proj_norm
+        # compute loss and update
+        loss = kl_div - proj_weight * proj_l2_rel
         loss.backward()
         optim.step()
 
         METRICS = {
             "loss": loss.item(),
             "kl_div": kl_div.item(),
-            "proj_norm": proj_norm.item(),
+            "proj_l2_rel": proj_l2_rel.item(),
             "top1_acc": top1_acc,
             "top10_agr": top10_agr,
             "score": score_val,
+            "best_score": best_score,
         }
 
         # update progress

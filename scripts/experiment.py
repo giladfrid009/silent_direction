@@ -16,7 +16,7 @@ from src.config import StopCriteria
 from src.model import TargetedModel
 
 from scripts.utils.load_model import SUPPORTED_MODELS, load_model
-from scripts.utils.load_dataset import SUPPORTED_DATASETS, load_dataset
+from scripts.utils.load_dataset import SUPPORTED_DATASETS, load_dataset, is_chat_dataset
 
 
 logger = create_logger(__name__)
@@ -46,6 +46,8 @@ class Experiment(ABC):
             metavar="MODEL",
             help=f"The model name to attack. Available models: {SUPPORTED_MODELS}",
         )
+
+        # TODO: add arg of is_chat to specify whether the model is a chat model or not.
 
         parser.add_argument(
             "--layers",
@@ -205,6 +207,7 @@ class Experiment(ABC):
         direction: torch.Tensor,
         metrics: dict[str, float],
         metric_tracker: MetricTracker,
+        **kwargs,
     ):
         """
         Saves direction and its metadata to disk. Metadata saved as a JSON file.
@@ -220,6 +223,7 @@ class Experiment(ABC):
             "layer_name": layer_name,
             "dataset_name": self.args().dataset,
             "metrics": metrics,
+            **{k: v for k, v in kwargs.items()},
         }
 
         meta_dir = pathlib.Path(log_dir) / "metadata"
@@ -276,11 +280,13 @@ class Experiment(ABC):
         dl_train = TableLoader(ds_train, batch_size=args.train_batch, shuffle=True, drop_last=args.drop_last)
         dl_eval = TableLoader(ds_val, batch_size=args.eval_batch, shuffle=False)
         dl_test = TableLoader(ds_test, batch_size=args.eval_batch, shuffle=False)
+        is_chat = is_chat_dataset(dl_train)
         logger.info(f"Loaded datasets with sample counts: (train, val, test) = ({len(ds_train)}, {len(ds_val)}, {len(ds_test)}).")
+        logger.info(f"Dataset is identified as {'chat' if is_chat else 'non-chat'} format.")
 
         logger.info(f"Loading model: {args.model}")
         model, tokenizer = load_model(args.model, torch_dtype=torch.bfloat16, device_map="cuda:0")
-        targeted_model = TargetedModel(model=model, tokenizer=tokenizer, is_chat=True)  # TODO: HARD CODED FOR NOW
+        targeted_model = TargetedModel(model=model, tokenizer=tokenizer, is_chat=is_chat)
         logger.info(f"\nModel architecture: {targeted_model.model}\n")
 
         for layer_name in args.layers:
@@ -347,6 +353,7 @@ class Experiment(ABC):
                         direction=direction,
                         metrics=metrics,
                         metric_tracker=metric_tracker,
+                        is_chat_model=targeted_model.is_chat,
                     )
 
                 else:

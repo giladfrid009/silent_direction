@@ -1,10 +1,10 @@
 from src.utils.logging import create_logger
+from src.data import TableLoader
 from typing import Any
 import datasets
 from datasets import DatasetDict, Dataset
 from enum import Enum
 import pandas as pd
-import re
 
 
 logger = create_logger(__name__)
@@ -17,6 +17,7 @@ class DatasetName(str, Enum):
 SUPPORTED_DATASETS = [e.value for e in DatasetName]
 
 
+# TODO: SHOULD ALSO RETURN A PROPERTY WHETHER IS CHAT DATASET OR RAW STRING DATASET
 def load_raw_dataset(name: str) -> DatasetDict:
     """
     Loads and returns a dataset by name. Each dataset is expected to have the following columns:
@@ -98,6 +99,9 @@ def load_dataset(name: str, shuffle: bool = True) -> tuple[pd.DataFrame, pd.Data
         ds_test = ds_val.shuffle(seed=3, keep_in_memory=True)
         logger.info(f"Dataset {name} has no test set, using validation set as test set.")
 
+    if ds_val is None or ds_test is None:
+        raise ValueError(f"Dataset {name} is missing validation or test set and could not be created from training set.")
+
     if shuffle:
         ds_train = ds_train.shuffle(keep_in_memory=True)  # type: ignore
         ds_val = ds_val.shuffle(keep_in_memory=True)  # type: ignore
@@ -108,3 +112,29 @@ def load_dataset(name: str, shuffle: bool = True) -> tuple[pd.DataFrame, pd.Data
         pd.DataFrame(ds_val.to_dict()),
         pd.DataFrame(ds_test.to_dict()),
     )
+
+
+def is_chat_dataset(data: TableLoader | pd.DataFrame) -> bool:
+    """
+    Determines whether the given dataset is a chat dataset, or a raw string dataset.
+
+    Args:
+        data (TableLoader | pd.DataFrame): The dataset to check. Can be either a TableLoader or a pandas DataFrame.
+
+    Returns:
+        bool: True if the dataset is a chat dataset
+            (i.e. "prompt" field is a list of alternating user/assistant messages), False if the dataset is a raw string dataset (i.e. "prompt" field is a string).
+    """
+
+    if isinstance(data, pd.DataFrame):
+        data = TableLoader(data, batch_size=2, shuffle=False)
+
+    sample = next(iter(data))["prompt"][0]
+
+    if isinstance(sample, str):
+        return False
+
+    if isinstance(sample, list) and all(isinstance(item, dict) for item in sample):
+        return True
+
+    raise ValueError("Unexpected format for 'prompt' field. Expected either a string or a list of dictionaries.")

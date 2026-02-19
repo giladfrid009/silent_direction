@@ -14,8 +14,8 @@ from src.utils.trackers import MetricTracker
 from src.config import StopCriteria
 from src.evaluate import evaluate
 
-from src.norm.train import train_norm
-from src.norm.utils import redundancy_score_norm
+from src.principal.train import train_principal
+from src.principal.utils import redundancy_score_principal
 from scripts.experiment import Experiment
 
 
@@ -38,7 +38,7 @@ class NormExperiment(Experiment):
         )
 
         parser.set_defaults(
-            project_name="silent-norm",
+            project_name="silent-principal",
         )
 
     def run_training(
@@ -74,7 +74,7 @@ class NormExperiment(Experiment):
         metric_tracker.report_hparams("eval_data", dl_eval.get_hparams())
         metric_tracker.report_hparams("logger", metric_tracker.get_hparams())
 
-        direction, history = train_norm(
+        direction, history = train_principal(
             targeted_model=targeted_model,
             layer=layer_name,
             dl_train=dl_train,
@@ -109,8 +109,8 @@ class NormExperiment(Experiment):
             stop_criteria=stop_criteria,
         )
 
-        metrics["score"] = redundancy_score_norm(
-            proj_norm=metrics["proj_l2_rel"],
+        metrics["score"] = redundancy_score_principal(
+            proj_var=metrics["proj_var_rel"],
             top1_acc=metrics["top1_acc"],
             top10_agr=metrics["top10_agr"],
         )
