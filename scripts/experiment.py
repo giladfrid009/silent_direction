@@ -48,8 +48,6 @@ class Experiment(ABC):
             help=f"The model name to attack. Available models: {SUPPORTED_MODELS}",
         )
 
-        # TODO: add arg of is_chat to specify whether the model is a chat model or not.
-
         parser.add_argument(
             "--layers",
             type=str,
@@ -88,7 +86,7 @@ class Experiment(ABC):
         parser.add_argument(
             "--train_batch",
             type=int,
-            default=50,
+            default=8,
             metavar="SIZE",
             help="The training batch size.",
         )
@@ -96,7 +94,7 @@ class Experiment(ABC):
         parser.add_argument(
             "--eval_batch",
             type=int,
-            default=100,
+            default=8,
             metavar="SIZE",
             help="The evaluation batch size.",
         )
@@ -348,7 +346,7 @@ class Experiment(ABC):
         logger.info(f"Loaded datasets with sample counts: (train, val, test) = ({len(ds_train)}, {len(ds_val)}, {len(ds_test)}).")
 
         logger.info(f"Loading model: {args.model}")
-        model, tokenizer = load_model(args.model, torch_dtype=torch.bfloat16, device_map="cuda:0")
+        model, tokenizer = load_model(args.model, dtype=torch.bfloat16, device_map="cuda:0")
         targeted_model = TargetedModel(model=model, tokenizer=tokenizer, is_chat=is_chat)
         logger.info(f"\nModel architecture: {targeted_model.model}\n")
 

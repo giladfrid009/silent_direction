@@ -31,6 +31,8 @@ SUPPORTED_TASKS = [
     "humaneval",  # code generation evaluation
     "hellaswag",  # commonsense reasoning evaluation
     "blimp",  # linguistic minimal pairs evaluation
+    "truthfulqa",  # question answering evaluation
+    "wmdp",
 ]
 
 
@@ -272,7 +274,7 @@ def main(args: argparse.Namespace):
         logger.info(f"Found {len(metas)} meta files for model {model_name}.")
 
         logger.info(f"Loading model: {model_name}")
-        model, tokenizer = load_model(model_name, torch_dtype=torch.bfloat16, device_map="cuda:0")
+        model, tokenizer = load_model(model_name, dtype=torch.bfloat16, device_map="cuda:0")
 
         for i, (meta, path) in enumerate(zip(metas, paths)):
             for j, task_name in enumerate(args.tasks):

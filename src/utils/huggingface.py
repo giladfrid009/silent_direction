@@ -73,7 +73,7 @@ def load_hf_tokenizer(
 
 def load_hf_model(
     model_name: str,
-    torch_dtype: torch.dtype = torch.bfloat16,
+    dtype: torch.dtype = torch.bfloat16,
     device_map: str = "cuda:0",
     tokenizer_name: str | None = None,
     adapter_name: str | None = None,
@@ -99,7 +99,7 @@ def load_hf_model(
 
     model: PreTrainedModel = AutoModelForCausalLM.from_pretrained(
         model_name,
-        torch_dtype=torch_dtype,
+        dtype=dtype,
         device_map=device_map,
         trust_remote_code=trust_remote_code,
         **model_kwargs,

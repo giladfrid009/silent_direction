@@ -18,11 +18,11 @@ class TargetedModel:
     ):
         if is_chat and (not hasattr(tokenizer, "chat_template")) or tokenizer.chat_template is None:
             raise ValueError("Tokenizer does not have a chat template, but is_chat=True")
-        
+
         elif not is_chat and hasattr(tokenizer, "chat_template") and tokenizer.chat_template is not None:
             logger.warning("Tokenizer has a chat template, but is_chat=False.")
 
-        self.model = model.eval()
+        self.model = model
         self.tokenizer = tokenizer
         self.is_chat = is_chat
         self.device = extract_device(model)
@@ -30,6 +30,11 @@ class TargetedModel:
 
         self.tokenizer.padding_side = "left"
         self.tokenizer.truncation_side = "right"
+
+        # disable gradients for all model parameters
+        self.model.eval()
+        for param in self.model.parameters():
+            param.requires_grad_(False)
 
     def get_hparams(self) -> dict:
         return {
