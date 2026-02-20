@@ -56,10 +56,10 @@ def load_raw_dataset(name: str) -> DatasetDict:
 
         # split eval from train, eval of size 2000
         split_dict = ds_train.train_test_split(test_size=2000, seed=42)
-        ds_train = split_dict["train"]
+        ds_rest = split_dict["train"]
         ds_eval = split_dict["test"]
 
-        split_dict = ds_train.train_test_split(train_size=10000, test_size=2000, seed=43)
+        split_dict = ds_rest.train_test_split(train_size=10000, test_size=2000, seed=43)
         ds_train = split_dict["train"]
         ds_test = split_dict["test"]
 

@@ -20,6 +20,7 @@ def train_norm(
     proj_weight: float = 0.1,
 ) -> tuple[torch.Tensor, list[dict[str, float]]]:
 
+    stop_criteria.reset()
     layer_dim = probe_layer_dim(targeted_model, layer)
     w = torch.randn(layer_dim, device=targeted_model.device, dtype=targeted_model.dtype, requires_grad=True)
     optim = torch.optim.Adam([w], lr=learning_rate)

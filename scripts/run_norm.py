@@ -95,11 +95,7 @@ class NormExperiment(Experiment):
         direction: torch.Tensor,
         dl_test: TableLoader,
         stop_criteria: StopCriteria,
-        metric_tracker: MetricTracker,
     ) -> dict[str, float]:
-
-        metric_tracker.report_hparams("test_data", dl_test.get_hparams())
-        metric_tracker.report_hparams("test_stop", stop_criteria.get_hparams())
 
         metrics = evaluate(
             targeted_model=targeted_model,
@@ -114,8 +110,6 @@ class NormExperiment(Experiment):
             top1_acc=metrics["top1_acc"],
             top10_agr=metrics["top10_agr"],
         )
-
-        metric_tracker.report_globals(metrics)
 
         return metrics
 

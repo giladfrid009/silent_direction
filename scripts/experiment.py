@@ -12,6 +12,7 @@ from src.utils import env
 from src.utils.logging import create_logger, setup_logging, loglevel_names
 from src.data import TableLoader
 from src.utils.trackers import MetricTracker
+from src.utils.torch import clear_memory
 from src.config import StopCriteria
 from src.model import TargetedModel
 
@@ -64,6 +65,16 @@ class Experiment(ABC):
             default="hh-rlhf",
             metavar="DATASET",
             help=f"The datasets to use. Available datasets: {SUPPORTED_DATASETS}",
+        )
+
+        parser.add_argument(
+            "--test_datasets",
+            type=str,
+            choices=SUPPORTED_DATASETS,
+            nargs="+",
+            default=[],
+            metavar="DATASET",
+            help=f"Additional datasets for final evaluation. Available datasets: {SUPPORTED_DATASETS}",
         )
 
         parser.add_argument(
@@ -157,9 +168,9 @@ class Experiment(ABC):
         stop_args.add_argument(
             "--train_patience",
             type=int,
-            default=20,
+            default=100,
             metavar="NUM",
-            help="Early stopping patience in number of evaluations.",
+            help="Early stopping patience in number of evaluations. If 0 then no early stopping is applied.",
         )
 
         stop_args.add_argument(
@@ -204,8 +215,8 @@ class Experiment(ABC):
         self,
         model_name: str,
         layer_name: str,
+        dataset_name: str,
         direction: torch.Tensor,
-        metrics: dict[str, float],
         metric_tracker: MetricTracker,
         **kwargs,
     ):
@@ -221,8 +232,7 @@ class Experiment(ABC):
         metadata = {
             "model_name": model_name,
             "layer_name": layer_name,
-            "dataset_name": self.args().dataset,
-            "metrics": metrics,
+            "dataset_name": dataset_name,
             **{k: v for k, v in kwargs.items()},
         }
 
@@ -234,15 +244,69 @@ class Experiment(ABC):
 
         torch.save(direction.cpu().detach(), meta_dir / "direction.pt")
 
-        logger.info(f"Saved metadata to {meta_dir} folder.")
+    def save_benchmarks(
+        self,
+        bench_name: str,
+        bench_metrics: dict[str, float],
+        metric_tracker: MetricTracker,
+    ):
+        log_dir = metric_tracker.log_dir
+
+        if log_dir is None:
+            logger.warning("No log directory found. Skipping saving benchmarks.")
+            return
 
         bench_dir = pathlib.Path(log_dir) / "benchmarks"
         bench_dir.mkdir(parents=True, exist_ok=True)
 
-        with open(bench_dir / "train_metrics.json", "w") as f:
-            json.dump({"results": {"train_metrics": metrics}}, f, indent=4)
+        with open(bench_dir / f"{bench_name}.json", "w") as f:
+            json.dump({"results": {bench_name: bench_metrics}}, f, indent=4)
 
         logger.info(f"Saved metrics results to {bench_dir} folder.")
+
+    @torch.inference_mode()
+    def final_evaluation(
+        self,
+        targeted_model: TargetedModel,
+        layer_name: str,
+        direction: torch.Tensor,
+        stop_criteria: StopCriteria,
+        metric_tracker: MetricTracker,
+    ):
+        args = self.args()
+        dataset_names = args.test_datasets
+        if args.dataset not in dataset_names:
+            dataset_names.append(args.dataset)
+
+        logger.info(f"Running final evaluation on datasets: {dataset_names}")
+
+        for ds_name in dataset_names:
+            _, _, ds_test = load_dataset(ds_name)
+            dl_test = TableLoader(ds_test, batch_size=args.eval_batch, shuffle=False)
+            logger.info(f"Loaded test dataset: {ds_name} with {len(ds_test)} samples.")
+            logger.info(f"Evaluating on test dataset: {ds_name}")
+
+            clear_memory()
+            test_metrics = self.run_evaluation(
+                targeted_model=targeted_model,
+                layer_name=layer_name,
+                direction=direction,
+                dl_test=dl_test,
+                stop_criteria=stop_criteria,
+            )
+
+            metric_tracker.report_globals({f"{ds_name}/{k}": v for k, v in test_metrics.items()})
+
+            if not args.test_run:
+                self.save_benchmarks(
+                    bench_name=f"eval-{ds_name}",
+                    bench_metrics=test_metrics,
+                    metric_tracker=metric_tracker,
+                )
+
+            else:
+                print(f"Test run - {ds_name} results:")
+                print(json.dumps(test_metrics, indent=4, default=str))
 
     @abstractmethod
     def run_training(
@@ -264,7 +328,6 @@ class Experiment(ABC):
         direction: torch.Tensor,
         dl_test: TableLoader,
         stop_criteria: StopCriteria,
-        metric_tracker: MetricTracker,
     ) -> dict[str, float]:
         pass
 
@@ -281,8 +344,8 @@ class Experiment(ABC):
         dl_eval = TableLoader(ds_val, batch_size=args.eval_batch, shuffle=False)
         dl_test = TableLoader(ds_test, batch_size=args.eval_batch, shuffle=False)
         is_chat = is_chat_dataset(dl_train)
+        logger.info(f"Dataset identified as {'chat' if is_chat else 'non-chat'} format.")
         logger.info(f"Loaded datasets with sample counts: (train, val, test) = ({len(ds_train)}, {len(ds_val)}, {len(ds_test)}).")
-        logger.info(f"Dataset is identified as {'chat' if is_chat else 'non-chat'} format.")
 
         logger.info(f"Loading model: {args.model}")
         model, tokenizer = load_model(args.model, torch_dtype=torch.bfloat16, device_map="cuda:0")
@@ -320,12 +383,7 @@ class Experiment(ABC):
                 train_stop = StopCriteria(
                     max_steps=args.train_steps if not args.test_run else 10,
                     max_time=args.train_time if not args.test_run else 2,
-                    patience=args.train_patience,
-                )
-
-                test_stop = StopCriteria(
-                    max_steps=args.eval_steps if not args.test_run else 10,
-                    max_time=args.eval_time if not args.test_run else 2,
+                    patience=args.train_patience if args.train_patience > 0 else None,
                 )
 
                 direction = self.run_training(
@@ -337,28 +395,30 @@ class Experiment(ABC):
                     metric_tracker=metric_tracker,
                 )
 
-                metrics = self.run_evaluation(
-                    targeted_model=targeted_model,
-                    layer_name=layer_name,
-                    direction=direction,
-                    dl_test=dl_test,
-                    stop_criteria=test_stop,
-                    metric_tracker=metric_tracker,
-                )
-
+                # save metadata and direction
                 if not args.test_run:
                     self.save_metadata(
                         model_name=args.model,
                         layer_name=layer_name,
+                        dataset_name=args.dataset,
                         direction=direction,
-                        metrics=metrics,
                         metric_tracker=metric_tracker,
                         is_chat_model=targeted_model.is_chat,
                     )
 
-                else:
-                    print(f"Test run - {layer_name} results:")
-                    print(json.dumps(metrics, indent=4, default=str))
+                eval_stop = StopCriteria(
+                    max_steps=args.eval_steps if not args.test_run else 10,
+                    max_time=args.eval_time if not args.test_run else 2,
+                )
+
+                # perform full evaluation and save benchmarks
+                self.final_evaluation(
+                    targeted_model=targeted_model,
+                    layer_name=layer_name,
+                    direction=direction,
+                    stop_criteria=eval_stop,
+                    metric_tracker=metric_tracker,
+                )
 
     def main(self):
         try:

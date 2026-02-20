@@ -24,6 +24,7 @@ def evaluate(
         projection = project(activations, direction=direction, normalize=True)
         return activations - projection
 
+    stop_criteria.reset()
     extractor = ActivationExtractor(targeted_model.model, layer)
     manipulator = ActivationManipulator(targeted_model.model, layer, manipulation_fn=subtract_projection)
 
@@ -40,11 +41,11 @@ def evaluate(
         "full_var_rel": 0.0,
     }
 
-    mean_activ, mean_activ_norm = compute_empirical_mean(
+    mean_activation, mean_activation_normalized = compute_empirical_mean(
         targeted_model=targeted_model,
         layer=layer,
         dl=dl_eval,
-        iterations=100, # TODO: currently hard-coded
+        iterations=100,  # TODO: currently hard-coded
     )
 
     current_step = 0
@@ -85,14 +86,14 @@ def evaluate(
             activations=activations,
             direction=direction,
             targets_mask=targets_mask,
-            mean_activation=mean_activ,
+            mean_activation=mean_activation,
         ).item()
 
         METRICS["proj_var_rel"] += Loss.projection_total_variance(
             activations=activations_normalized,
             direction=direction,
             targets_mask=targets_mask,
-            mean_activation=mean_activ_norm,
+            mean_activation=mean_activation_normalized,
         ).item()
 
         METRICS["full_l2_raw"] += Loss.l2_norm(
@@ -104,14 +105,14 @@ def evaluate(
         METRICS["full_var_raw"] += Loss.total_variance(
             activations=activations,
             targets_mask=targets_mask,
-            mean_activation=mean_activ,
+            mean_activation=mean_activation,
             reduction="mean",
         ).item()
 
         METRICS["full_var_rel"] += Loss.total_variance(
             activations=activations_normalized,
             targets_mask=targets_mask,
-            mean_activation=mean_activ_norm,
+            mean_activation=mean_activation_normalized,
             reduction="mean",
         ).item()
 

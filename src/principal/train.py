@@ -20,6 +20,7 @@ def train_principal(
     proj_weight: float = 0.1,
 ) -> tuple[torch.Tensor, list[dict[str, float]]]:
 
+    stop_criteria.reset()
     layer_dim = probe_layer_dim(targeted_model, layer)
     w = torch.randn(layer_dim, device=targeted_model.device, dtype=targeted_model.dtype, requires_grad=True)
     optim = torch.optim.Adam([w], lr=learning_rate)
@@ -34,7 +35,7 @@ def train_principal(
     extractor = ActivationExtractor(targeted_model.model, layer)
     manipulator = ActivationManipulator(targeted_model.model, layer, manipulation_fn=subtract_projection)
 
-    mean_activ_raw, mean_activ_norm = compute_empirical_mean(
+    mean_activation, mean_activation_normalized = compute_empirical_mean(
         targeted_model=targeted_model,
         layer=layer,
         dl=dl_train,
@@ -75,7 +76,7 @@ def train_principal(
             activations=activations_normalized,
             direction=v,
             targets_mask=targets_mask,
-            mean_activation=mean_activ_norm,
+            mean_activation=mean_activation_normalized,
         )
 
         top10_agr = Metrics.topk_agreement(
