@@ -13,6 +13,8 @@ logger = create_logger(__name__)
 class DatasetName(str, Enum):
     HH_RLHF = "hh-rlhf"
     SLIM_ORCA = "slim-orca"
+    TULU_V2 = "tulu-v2"
+    OASST2 = "oasst2"
 
 
 SUPPORTED_DATASETS = [e.value for e in DatasetName]
@@ -34,16 +36,6 @@ def load_raw_dataset(name: str) -> DatasetDict:
     Returns:
         DatasetDict: A dictionary-like object containing the dataset splits.
     """
-    # validate alternating roles structure
-    def filter_fn(example: Any) -> bool:
-        for col in ["chosen", "rejected"]:
-            conv = example[col]
-            for i, msg in enumerate(conv):
-                if i % 2 == 0 and msg["role"] != "user":
-                    return False
-                if i % 2 == 1 and msg["role"] != "assistant":
-                    return False
-        return True
 
     if name not in SUPPORTED_DATASETS:
         raise ValueError(f"Unsupported dataset: {name}. Supported datasets are: {SUPPORTED_DATASETS}")
@@ -51,19 +43,19 @@ def load_raw_dataset(name: str) -> DatasetDict:
     if name == DatasetName.HH_RLHF:
         ds_train: Dataset = datasets.load_dataset("trl-internal-testing/hh-rlhf-trl-style", split="train")  # type: ignore
 
+         # validate alternating roles structure
+        def filter_fn(example: Any) -> bool:
+            for col in ["chosen", "rejected"]:
+                conv = example[col]
+                for i, msg in enumerate(conv):
+                    if i % 2 == 0 and msg["role"] != "user":
+                        return False
+                    if i % 2 == 1 and msg["role"] != "assistant":
+                        return False
+            return True
+    
         ds_train = ds_train.filter(filter_fn)
         ds_train = ds_train.rename_columns({"chosen": "prompt", "prompt": "input"})
-
-        # # split eval from train, eval of size 2000
-        # split_dict = ds_train.train_test_split(test_size=2000, seed=42)
-        # ds_rest = split_dict["train"]
-        # ds_eval = split_dict["test"]
-
-        # split_dict = ds_rest.train_test_split(train_size=10000, test_size=2000, seed=43)
-        # ds_train = split_dict["train"]
-        # ds_test = split_dict["test"]
-
-        # return DatasetDict({"train": ds_train, "validation": ds_eval, "test": ds_test})
 
     elif name == DatasetName.SLIM_ORCA:
         ds_train: Dataset = datasets.load_dataset("Open-Orca/SlimOrca", split="train")  # type: ignore
@@ -79,8 +71,119 @@ def load_raw_dataset(name: str) -> DatasetDict:
             ]
             return {"prompt": conv}
 
+        def filter_slim_orca_fn(example: Any) -> bool:
+            conv = example["prompt"]
+            if len(conv) == 0:
+                return False
+            for i, msg in enumerate(conv):
+                if i % 2 == 0 and msg["role"] != "user":
+                    return False
+                if i % 2 == 1 and msg["role"] != "assistant":
+                    return False
+            return True
+
         ds_train = ds_train.map(convert_fn, remove_columns=["conversations"])
-        ds_train = ds_train.filter(filter_fn)
+        ds_train = ds_train.filter(filter_slim_orca_fn)
+
+    elif name == DatasetName.TULU_V2:
+        ds_train: Dataset = datasets.load_dataset("allenai/tulu-v2-sft-mixture", split="train")  # type: ignore
+
+        def convert_tulu_fn(example: Any) -> dict:
+            conv = [{"role": msg["role"], "content": msg["content"]} for msg in example["messages"]]
+            return {"prompt": conv}
+
+        def filter_tulu_fn(example: Any) -> bool:
+            conv = example["prompt"]
+            if len(conv) == 0:
+                return False
+            for i, msg in enumerate(conv):
+                if msg["role"] not in {"user", "assistant", "system"}:
+                    return False
+                # first non-system message must be from user
+                if i == 0 and msg["role"] == "system":
+                    continue
+                if msg["role"] == "system":
+                    return False  # system messages only allowed at position 0
+            return True
+
+        ds_train = ds_train.map(convert_tulu_fn, remove_columns=["dataset", "id", "messages"])
+        ds_train = ds_train.filter(filter_tulu_fn)
+
+    elif name == DatasetName.OASST2:
+        # Load the flat messages table and combine both splits
+        ds_raw = datasets.load_dataset("OpenAssistant/oasst2")
+        all_msgs = datasets.concatenate_datasets([ds_raw["train"], ds_raw["validation"]])  # type: ignore
+
+        # Keep only ready-for-export, non-deleted messages
+        all_msgs = all_msgs.filter(
+            lambda ex: ex["tree_state"] == "ready_for_export" and not ex["deleted"]
+        )
+        df = pd.DataFrame(all_msgs.to_dict())
+
+        # Identify English trees by their root message language
+        root_df = df[df["message_id"] == df["message_tree_id"]]
+        english_tree_ids = set(root_df[root_df["lang"] == "en"]["message_tree_id"].tolist())
+        df = df[df["message_tree_id"].isin(english_tree_ids)]
+
+        # Build message lookup and parent -> children map
+        msg_lookup = df.set_index("message_id").to_dict("index")
+        children_map: dict[str, list[str]] = {}
+        for msg_id, parent_id in zip(df["message_id"], df["parent_id"]):
+            if not isinstance(parent_id, str):
+                continue
+            if parent_id not in children_map:
+                children_map[parent_id] = []
+            children_map[parent_id].append(msg_id)
+
+        # Sort children by rank (lower rank = higher quality; unranked last)
+        def get_rank(mid: str) -> float:
+            rank = msg_lookup[mid]["rank"]
+            if rank is None or (isinstance(rank, float) and pd.isna(rank)):
+                return float("inf")
+            return float(rank)
+
+        for parent in children_map:
+            children_map[parent].sort(key=get_rank)
+
+        # DFS to extract all linear conversation paths (root → leaf)
+        def extract_paths(msg_id: str, path: list[str]) -> list[list[str]]:
+            path = path + [msg_id]
+            children = children_map.get(msg_id, [])
+            if not children:
+                return [path]
+            result = []
+            for child_id in children:
+                result.extend(extract_paths(child_id, path))
+            return result
+
+        conversations = []
+        for tree_id in english_tree_ids:
+            if tree_id not in msg_lookup:
+                continue
+            for path in extract_paths(tree_id, []):
+                conv = [
+                    {
+                        "role": "user" if msg_lookup[mid]["role"] == "prompter" else "assistant",
+                        "content": msg_lookup[mid]["text"],
+                    }
+                    for mid in path
+                ]
+                conversations.append({"prompt": conv})
+
+        def filter_oasst2_fn(example: Any) -> bool:
+            conv = example["prompt"]
+            if len(conv) == 0:
+                return False
+            for i, msg in enumerate(conv):
+                if i % 2 == 0 and msg["role"] != "user":
+                    return False
+                if i % 2 == 1 and msg["role"] != "assistant":
+                    return False
+            return True
+
+        ds_train = Dataset.from_list(conversations)
+        ds_train = ds_train.filter(filter_oasst2_fn)
+
     else:
         raise ValueError(f"Unsupported dataset: {name}")
 
