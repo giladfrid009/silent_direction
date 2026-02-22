@@ -33,8 +33,16 @@ class PrincipalExperiment(Experiment):
             "--proj_weight",
             type=float,
             default=0.1,
-            metavar="PW",
+            metavar="FLOAT",
             help="Weight for the projection term in the loss function.",
+        )
+        
+        parser.add_argument(
+            "--kl_weight",
+            type=float,
+            default=1.0,
+            metavar="FLOAT",
+            help="Weight for the KL divergence term in the loss function.",
         )
 
         parser.set_defaults(
@@ -81,6 +89,7 @@ class PrincipalExperiment(Experiment):
             stop_criteria=stop_criteria,
             learning_rate=args.learning_rate,
             proj_weight=args.proj_weight,
+            kl_weight=args.kl_weight,
         )
 
         for step, metrics in enumerate(history):

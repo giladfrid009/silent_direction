@@ -18,6 +18,7 @@ def train_norm(
     stop_criteria: StopCriteria,
     learning_rate: float = 0.01,
     proj_weight: float = 0.1,
+    kl_weight: float = 1.0,
 ) -> tuple[torch.Tensor, list[dict[str, float]]]:
 
     stop_criteria.reset()
@@ -96,7 +97,7 @@ def train_norm(
             best_direction = v.detach().clone()
 
         # compute loss and update
-        loss = kl_div - proj_weight * proj_l2_rel
+        loss = kl_weight * kl_div - proj_weight * proj_l2_rel
         loss.backward()
         optim.step()
 

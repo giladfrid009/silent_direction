@@ -10,15 +10,15 @@ import gc
 # Global Constants & Configuration
 # =============================================================================
 
-PROJECT_NAME = "silent-norm"
-SCRIPT_PATH = "scripts/run_norm.py"
+PROJECT_NAME = "silent-principal"
+SCRIPT_PATH = "scripts/run_principal.py"
 
 # Default Arguments shared across all runs unless overridden
 DEFAULT_RUN_ARGS = {
     "log_dir": "logs",
     "dataset": "hh-rlhf",
-    "train_batch": 8,
-    "eval_batch": 8,
+    "train_batch": 4,
+    "eval_batch": 4,
     "train_time": 40,
     "train_steps": 2000,
     "train_patience": 100,
@@ -35,7 +35,7 @@ DEFAULT_RUN_ARGS = {
 EXP_SETUP_PLACEHOLDER = dict(
     learning_rate=0.01,
     kl_weight=1.0,
-    proj_weigh=0.1,
+    proj_weigh=10.0,
 )
 
 

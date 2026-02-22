@@ -282,6 +282,9 @@ def run_benchmark(
 
     task_params = copy.deepcopy(TASK_PARAMS.get(task, {}))
 
+    if args.test_run:
+        task_params["limit"] = 10
+
     def subtract_projection(activations: torch.Tensor) -> torch.Tensor:
         direction = meta.direction.to(activations.device, activations.dtype)
         projection = project(activations, direction, normalize=True)
@@ -302,7 +305,7 @@ def run_benchmark(
         bench_results = evaluator.simple_evaluate(
             model=bench_model,
             tasks=[task],
-            limit=10 if args.test_run else task_params.pop("limit", None),
+            limit=task_params.pop("limit", None),
             log_samples=task_params.pop("log_samples", False),
             gen_kwargs=task_params.pop("gen_kwargs", None),
             bootstrap_iters=task_params.pop("bootstrap_iters", 0),
