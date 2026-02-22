@@ -12,6 +12,7 @@ logger = create_logger(__name__)
 
 class DatasetName(str, Enum):
     HH_RLHF = "hh-rlhf"
+    SLIM_ORCA = "slim-orca"
 
 
 SUPPORTED_DATASETS = [e.value for e in DatasetName]
@@ -33,6 +34,16 @@ def load_raw_dataset(name: str) -> DatasetDict:
     Returns:
         DatasetDict: A dictionary-like object containing the dataset splits.
     """
+    # validate alternating roles structure
+    def filter_fn(example: Any) -> bool:
+        for col in ["chosen", "rejected"]:
+            conv = example[col]
+            for i, msg in enumerate(conv):
+                if i % 2 == 0 and msg["role"] != "user":
+                    return False
+                if i % 2 == 1 and msg["role"] != "assistant":
+                    return False
+        return True
 
     if name not in SUPPORTED_DATASETS:
         raise ValueError(f"Unsupported dataset: {name}. Supported datasets are: {SUPPORTED_DATASETS}")
@@ -40,32 +51,49 @@ def load_raw_dataset(name: str) -> DatasetDict:
     if name == DatasetName.HH_RLHF:
         ds_train: Dataset = datasets.load_dataset("trl-internal-testing/hh-rlhf-trl-style", split="train")  # type: ignore
 
-        # validate alternating roles structure
-        def filter_fn(example: Any) -> bool:
-            for col in ["chosen", "rejected"]:
-                conv = example[col]
-                for i, msg in enumerate(conv):
-                    if i % 2 == 0 and msg["role"] != "user":
-                        return False
-                    if i % 2 == 1 and msg["role"] != "assistant":
-                        return False
-            return True
-
         ds_train = ds_train.filter(filter_fn)
         ds_train = ds_train.rename_columns({"chosen": "prompt", "prompt": "input"})
 
-        # split eval from train, eval of size 2000
-        split_dict = ds_train.train_test_split(test_size=2000, seed=42)
-        ds_rest = split_dict["train"]
-        ds_eval = split_dict["test"]
+        # # split eval from train, eval of size 2000
+        # split_dict = ds_train.train_test_split(test_size=2000, seed=42)
+        # ds_rest = split_dict["train"]
+        # ds_eval = split_dict["test"]
 
-        split_dict = ds_rest.train_test_split(train_size=10000, test_size=2000, seed=43)
-        ds_train = split_dict["train"]
-        ds_test = split_dict["test"]
+        # split_dict = ds_rest.train_test_split(train_size=10000, test_size=2000, seed=43)
+        # ds_train = split_dict["train"]
+        # ds_test = split_dict["test"]
 
-        return DatasetDict({"train": ds_train, "validation": ds_eval, "test": ds_test})
+        # return DatasetDict({"train": ds_train, "validation": ds_eval, "test": ds_test})
 
-    raise ValueError(f"Unsupported dataset: {name}")
+    elif name == DatasetName.SLIM_ORCA:
+        ds_train: Dataset = datasets.load_dataset("Open-Orca/SlimOrca", split="train")  # type: ignore
+
+        role_map = {"human": "user", "gpt": "assistant"}
+
+        def convert_fn(example: Any) -> dict:
+            # Filter out system messages and convert to role/content format
+            conv = [
+                {"role": role_map[msg["from"]], "content": msg["value"]}
+                for msg in example["conversations"]
+                if msg["from"] in role_map
+            ]
+            return {"prompt": conv}
+
+        ds_train = ds_train.map(convert_fn, remove_columns=["conversations"])
+        ds_train = ds_train.filter(filter_fn)
+    else:
+        raise ValueError(f"Unsupported dataset: {name}")
+
+    # split eval from train, eval of size 2000
+    split_dict = ds_train.train_test_split(test_size=2000, seed=42)
+    ds_rest = split_dict["train"]
+    ds_eval = split_dict["test"]
+
+    split_dict = ds_rest.train_test_split(train_size=10000, test_size=2000, seed=43)
+    ds_train = split_dict["train"]
+    ds_test = split_dict["test"]
+
+    return DatasetDict({"train": ds_train, "validation": ds_eval, "test": ds_test})
 
 
 def load_dataset(name: str, shuffle: bool = True) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
