@@ -34,6 +34,7 @@ SUPPORTED_TASKS_CHAT = [
     "xquad_ar",  # Arabic extractive reading comprehension.
     "xquad_ru",  # Russian extractive reading comprehension.
     "xquad_es",  # Spanish extractive reading comprehension.
+    "xquad_zh",  # Chinese extractive reading comprehension.
     "ifeval",  # Instruction-following compliance.
     "wikitext",  # Language modeling perplexity.
     "blimp",  # Syntactic/grammatical competence.
@@ -44,6 +45,7 @@ SUPPORTED_TASKS_CHAT = [
     "mastermind_easy",  # Symbolic logical deduction.
     "toxigen",  # Toxicity and bias sensitivity.
     "wmdp",  # Harmful knowledge and safety QA.
+    "super-glue-lm-eval-v1",
 ]
 
 SUPPORTED_TASKS_BASE = [
@@ -63,14 +65,17 @@ SUPPORTED_TASKS_BASE = [
 ]
 
 
+# TODO: add batch_size for each task
 TASK_PARAMS: dict[str, dict] = {
     "xquad_en": dict(limit=0.5),
     "xquad_ar": dict(limit=0.5),
     "xquad_ru": dict(limit=0.5),
     "xquad_es": dict(limit=0.5),
+    "xquad_zh": dict(limit=0.5),
     "ifeval": dict(limit=0.25),
     "blimp": dict(limit=0.5),
     "jsonschema_bench": dict(limit=0.33),
+    "super-glue-lm-eval-v1": dict(limit=0.1),
 }
 
 
