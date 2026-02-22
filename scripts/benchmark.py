@@ -4,36 +4,88 @@ import argparse
 import random
 import torch
 import fnmatch
-from tqdm.auto import tqdm
+import json
+from typing import Any
+import os
+from dataclasses import dataclass
+import copy
+
+from transformers import PreTrainedModel, PreTrainedTokenizer
+from lm_eval.utils import handle_non_serializable
 from lm_eval import evaluator
 from lm_eval.models.huggingface import HFLM
-import json
-import logging
-from typing import Any
 
 # set pythonpath to the main module directory
 module_dir = pathlib.Path(__file__).parent.resolve().parent
 if str(module_dir) not in sys.path:
     sys.path.append(str(module_dir))
 
-from dataclasses import dataclass
 from src.activation_extractor import ActivationManipulator
 from src.utils.logging import create_logger, setup_logging, loglevel_names
 from src.utils import env
 from src.functional import project
+from src.utils.torch import clear_memory
 from scripts.utils.load_model import SUPPORTED_MODELS, load_model
 
 
-SUPPORTED_TASKS = [
-    "mmlu_pro",  # general knowledge and reasoning
-    "gsm8k",  # math word problem solving
-    "ifeval",  # instruction following evaluation
-    "humaneval",  # code generation evaluation
-    "hellaswag",  # commonsense reasoning evaluation
-    "blimp",  # linguistic minimal pairs evaluation
-    "truthfulqa",  # question answering evaluation
-    "wmdp",
+SUPPORTED_TASKS_CHAT = [
+    "metabench",  # Broad knowledge and reasoning (ARC, GSM8K, HellaSwag, MMLU, TruthfulQA, WinoGrande).
+    "xquad_en",  # English extractive reading comprehension.
+    "xquad_ar",  # Arabic extractive reading comprehension.
+    "xquad_ru",  # Russian extractive reading comprehension.
+    "xquad_es",  # Spanish extractive reading comprehension.
+    "ifeval",  # Instruction-following compliance.
+    "wikitext",  # Language modeling perplexity.
+    "blimp",  # Syntactic/grammatical competence.
+    "anli",  # Adversarial natural language inference.
+    "piqa",  # Physical commonsense reasoning.
+    "mbpp",  # Python code generation.
+    "jsonschema_bench",  # Schema-constrained JSON generation.
+    "mastermind_easy",  # Symbolic logical deduction.
+    "toxigen",  # Toxicity and bias sensitivity.
+    "wmdp",  # Harmful knowledge and safety QA.
 ]
+
+SUPPORTED_TASKS_BASE = [
+    "metabench_arc",
+    "metabench_hellaswag",
+    "metabench_mmlu",
+    "metabench_truthfulqa",
+    "metabench_winogrande",
+    "wikitext",
+    "lambada_cloze",
+    "lambada_multilingual_stablelm",
+    "blimp",
+    "anli",
+    "piqa",
+    "mbpp",
+    "mastermind_easy",
+]
+
+
+TASK_PARAMS: dict[str, dict] = {
+    "xquad_en": dict(limit=0.5),
+    "xquad_ar": dict(limit=0.5),
+    "xquad_ru": dict(limit=0.5),
+    "xquad_es": dict(limit=0.5),
+    "ifeval": dict(limit=0.25),
+    "blimp": dict(limit=0.5),
+    "jsonschema_bench": dict(limit=0.33),
+}
+
+
+# metabench: 3 mins
+# squad_completion: 27 mins
+# xquad: 47 mins
+# ifeval: 30 mins
+# wikitext: 1.5 mins
+# blimp: 9 mins
+# anli: 1 mins
+# piqa: 1 mins
+# mbpp: 5 mins
+# toxigen: 30s
+# jsonschema_bench: 15 mins
+# mastermind_35_easy: 1 mins
 
 
 logger = create_logger(__name__)
@@ -53,10 +105,17 @@ def parse_args() -> argparse.Namespace:
         "--tasks",
         type=str,
         nargs="+",
-        choices=SUPPORTED_TASKS,
-        default=SUPPORTED_TASKS,
+        choices=SUPPORTED_TASKS_CHAT + SUPPORTED_TASKS_BASE + ["auto", "chat", "base"],
+        default=["all"],
         metavar="TASKS",
-        help="List of benchmark tasks to run.",
+        help=(
+            "List of benchmark tasks to run. If not specified, will run all supported tasks. "
+            " - If 'auto' is specified, runs all appropriate tasks for the model. "
+            " - If 'chat' is specified, runs all chat model tasks. "
+            " - If 'base' is specified, runs all base model tasks."
+            f"Chat models tasks: {SUPPORTED_TASKS_CHAT}. "
+            f"Base models tasks: {SUPPORTED_TASKS_BASE}. "
+        ),
     )
 
     parser.add_argument(
@@ -96,6 +155,12 @@ def parse_args() -> argparse.Namespace:
     )
 
     parser.add_argument(
+        "--allow_code",
+        action="store_true",
+        help="Whether to allow code execution during evaluation (for tasks that require it, e.g. MBPP).",
+    )
+
+    parser.add_argument(
         "--patterns",
         type=str,
         nargs="+",
@@ -121,6 +186,7 @@ class Meta:
     model_name: str
     layer_name: str
     direction: torch.Tensor
+    is_chat_model: bool
 
 
 def _read_meta(path: pathlib.Path) -> Meta | None:
@@ -130,7 +196,7 @@ def _read_meta(path: pathlib.Path) -> Meta | None:
     metadata = json.load(path.open())
 
     # make sure the meta has the required fields
-    if not all(field in metadata for field in ["model_name", "layer_name"]):
+    if not all(field in metadata for field in ["model_name", "layer_name", "is_chat_model"]):
         return None
 
     # check if direction.pt in the same folder as the meta json
@@ -144,6 +210,7 @@ def _read_meta(path: pathlib.Path) -> Meta | None:
     return Meta(
         model_name=metadata["model_name"],
         layer_name=metadata["layer_name"],
+        is_chat_model=metadata["is_chat_model"],
         direction=direction,
     )
 
@@ -190,23 +257,30 @@ def read_data(paths: list[str], recurse: bool, patterns: list[str]) -> tuple[lis
     return path_list, meta_list
 
 
-def prepare_environment(seed: int | None):
+def prepare_environment(seed: int | None, args: argparse.Namespace):
     if seed is None:
         seed = random.randint(0, 10000)
     logger.info(f"Random seed: {seed}")
+
+    if args.allow_code:
+        os.environ["HF_ALLOW_CODE_EVAL"] = "1"
+        logger.warning("Code execution is enabled for benchmarks.")
 
     torch.set_float32_matmul_precision("high")
     env.prepare_environment()
     env.set_seed(seed)
 
 
+@torch.inference_mode()
 def run_benchmark(
-    model,
-    tokenizer,
+    model: PreTrainedModel,
+    tokenizer: PreTrainedTokenizer,
     meta: Meta,
     task: str,
     args: argparse.Namespace,
 ) -> dict[str, Any]:
+
+    task_params = copy.deepcopy(TASK_PARAMS.get(task, {}))
 
     def subtract_projection(activations: torch.Tensor) -> torch.Tensor:
         direction = meta.direction.to(activations.device, activations.dtype)
@@ -217,21 +291,23 @@ def run_benchmark(
 
     with manipulator.capture():
         bench_model = HFLM(
-            model,
+            pretrained=model,
             tokenizer=tokenizer,
             batch_size=args.batch_size,
-            max_batch_size=args.batch_size,
             device="cuda:0",
-            enable_thinking=None,
+            enable_thinking=False,
+            max_length=2048,
         )
 
         bench_results = evaluator.simple_evaluate(
             model=bench_model,
             tasks=[task],
-            limit=10 if args.test_run else None,
-            log_samples=False,
-            gen_kwargs=None,
-            bootstrap_iters=0,
+            limit=10 if args.test_run else task_params.pop("limit", None),
+            log_samples=task_params.pop("log_samples", False),
+            gen_kwargs=task_params.pop("gen_kwargs", None),
+            bootstrap_iters=task_params.pop("bootstrap_iters", 0),
+            confirm_run_unsafe_code=args.allow_code,
+            **task_params,
         )
 
     if bench_results is None:
@@ -240,10 +316,24 @@ def run_benchmark(
     return bench_results
 
 
+def _get_tasks(meta: Meta, args: argparse.Namespace) -> list[str]:
+
+    tasks = args.tasks
+
+    if ("auto" in args.tasks and meta.is_chat_model) or "chat" in args.tasks:
+        tasks += SUPPORTED_TASKS_CHAT
+    if ("auto" in args.tasks and not meta.is_chat_model) or "base" in args.tasks:
+        tasks += SUPPORTED_TASKS_BASE
+
+    tasks = list(set(tasks))
+    tasks = [task for task in tasks if task not in {"auto", "chat", "base"}]
+    return tasks
+
+
 def save_results(results: dict[str, Any], path: pathlib.Path):
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w") as f:
-        json.dump(results, f, indent=4, default=str)
+        json.dump(results, f, indent=4, default=handle_non_serializable)
     logger.info(f"Saved benchmark results to: {path}")
 
 
@@ -255,8 +345,8 @@ def main(args: argparse.Namespace):
 
     # group paths and metas by model name
     model_names = sorted(set(meta.model_name for meta in data_list))
-    model_to_paths = {model_name: [] for model_name in model_names}
-    model_to_metas = {model_name: [] for model_name in model_names}
+    model_to_paths: dict[str, list[pathlib.Path]] = {model_name: [] for model_name in model_names}
+    model_to_metas: dict[str, list[Meta]] = {model_name: [] for model_name in model_names}
 
     if any(model_name not in SUPPORTED_MODELS for model_name in model_names):
         unsupported = [model_name for model_name in model_names if model_name not in SUPPORTED_MODELS]
@@ -267,6 +357,9 @@ def main(args: argparse.Namespace):
         model_to_paths[m.model_name].append(p)
         model_to_metas[m.model_name].append(m)
 
+    total_runs = sum(len(metas) for metas in model_to_metas.values())
+    current_run = 1
+
     for model_name in model_names:
         logger.info(f"Processing model: {model_name}")
         paths = model_to_paths[model_name]
@@ -276,11 +369,14 @@ def main(args: argparse.Namespace):
         logger.info(f"Loading model: {model_name}")
         model, tokenizer = load_model(model_name, dtype=torch.bfloat16, device_map="cuda:0")
 
-        for i, (meta, path) in enumerate(zip(metas, paths)):
-            for j, task_name in enumerate(args.tasks):
+        for meta, path in zip(metas, paths):
+            model_tasks = _get_tasks(meta, args)
+            logger.info(f"Tasks to run for meta {path}: {model_tasks}")
+
+            for j, task_name in enumerate(model_tasks):
                 print()
-                logger.info(f"Processing meta (model, layer) = ({meta.model_name}, {meta.layer_name}) ({i + 1}/{len(metas)})")
-                logger.info(f"Running benchmark for task: {task_name} ({j + 1}/{len(args.tasks)})")
+                logger.info(f"Processing (model, layer) = ({meta.model_name}, {meta.layer_name}) ({current_run}/{total_runs})")
+                logger.info(f"Running benchmark for task: {task_name} ({j + 1}/{len(model_tasks)})")
 
                 try:
                     task_results = run_benchmark(
@@ -296,17 +392,20 @@ def main(args: argparse.Namespace):
                     continue
 
                 if not args.test_run:
-                    task_results.pop("configs", None)
                     result_path = pathlib.Path(path).parent.parent / "benchmarks" / f"{task_name}.json"
                     save_results(task_results, path=result_path)
 
                 else:
-                    print(f"Test run - {task_name} results:")
+                    logger.info(f"Test run - {task_name} results:")
                     print(json.dumps(task_results["results"], indent=4, default=str))
+
+            # prepare for next run
+            clear_memory()
+            current_run += 1
 
 
 if __name__ == "__main__":
     args = parse_args()
     setup_logging(level=args.log_level)
-    prepare_environment(seed=args.seed)
+    prepare_environment(seed=args.seed, args=args)
     main(args)

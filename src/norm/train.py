@@ -50,9 +50,9 @@ def train_norm(
         optim.zero_grad()
         v = torch.nn.functional.normalize(w, dim=0)
 
-        with torch.no_grad(), extractor.capture():
-            baseline_logits = targeted_model.forward(encodings).logits.detach()
-            activations = extractor.get_activations()[layer].detach()
+        with torch.inference_mode(), extractor.capture():
+            baseline_logits = targeted_model.forward(encodings).logits
+            activations = extractor.get_activations()[layer]
             activations_normalized = torch.nn.functional.normalize(activations, dim=-1)
 
         with manipulator.capture():

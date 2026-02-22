@@ -46,7 +46,7 @@ class TargetedModel:
     def tokenize(
         self,
         convs: list[Conv] | list[str],
-        max_length: int = 512,
+        max_length: int | None = 512,
         **kwargs,
     ) -> BatchEncoding:
 
@@ -108,7 +108,7 @@ class TargetedModel:
             logger.warning("No prompts provided for generation")
             return []
 
-        encodings = self.tokenize(prompts)
+        encodings = self.tokenize(prompts, max_length=None)
         input_ids: torch.Tensor = encodings.input_ids  # [B, L]
         attention_mask: torch.Tensor = encodings.attention_mask  # [B, L]
 
@@ -118,7 +118,7 @@ class TargetedModel:
             max_new_tokens=max_new_tokens,
             pad_token_id=self.tokenizer.pad_token_id or self.tokenizer.eos_token_id,
             **kwargs,
-        )
+        )  # type: ignore
 
         return self.tokenizer.batch_decode(
             outputs[:, input_ids.shape[1] :],

@@ -3,7 +3,6 @@ import torch
 import torch.nn.functional as F
 
 
-
 class Loss:
     @staticmethod
     def l2_norm(
@@ -157,6 +156,7 @@ class Loss:
         modified_logits: torch.Tensor,
         targets_mask: torch.Tensor,
         top_k: int | None = None,
+        reduction: str = "batchmean",
     ) -> torch.Tensor:
         """
         Compute KL divergence between two logit distributions over all non-padding tokens.
@@ -179,7 +179,7 @@ class Loss:
         log_baselines = F.log_softmax(baseline_logits, dim=-1)
         log_modified = F.log_softmax(modified_logits, dim=-1)
 
-        return F.kl_div(log_modified, log_baselines, reduction="batchmean", log_target=True)
+        return F.kl_div(log_modified, log_baselines, reduction=reduction, log_target=True)
 
     @staticmethod
     def js_divergence(

@@ -17,7 +17,7 @@ if str(module_dir) not in sys.path:
 from src.utils.logging import create_logger, setup_logging, loglevel_names
 from src.utils import env
 from scripts.utils.load_model import SUPPORTED_MODELS, load_model
-from scripts.benchmark import SUPPORTED_TASKS
+from scripts.benchmark import SUPPORTED_TASKS_CHAT
 
 
 logger = create_logger(__name__)
@@ -40,8 +40,8 @@ def parse_args() -> argparse.Namespace:
         "--tasks",
         type=str,
         nargs="+",
-        choices=SUPPORTED_TASKS,
-        default=SUPPORTED_TASKS,
+        choices=SUPPORTED_TASKS_CHAT,
+        default=SUPPORTED_TASKS_CHAT,
         metavar="TASKS",
         help="List of benchmark tasks to run.",
     )

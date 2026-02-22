@@ -19,7 +19,7 @@ from src.principal.utils import redundancy_score_principal
 from scripts.experiment import Experiment
 
 
-class NormExperiment(Experiment):
+class PrincipalExperiment(Experiment):
     def add_arguments(self, parser: ArgumentParser) -> None:
         parser.add_argument(
             "--learning_rate",
@@ -115,5 +115,5 @@ class NormExperiment(Experiment):
 
 
 if __name__ == "__main__":
-    experiment = NormExperiment()
+    experiment = PrincipalExperiment()
     experiment.main()
