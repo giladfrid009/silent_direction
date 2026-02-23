@@ -150,7 +150,7 @@ def main(args: argparse.Namespace):
         logger.info(f"Processing model: {model_name}")
 
         logger.info(f"Loading model: {model_name}")
-        model, tokenizer = load_model(model_name, dtype=torch.bfloat16, device_map="cuda:0")
+        model, tokenizer = load_model(model_name, device_map="cuda:0")
 
         for j, task_name in enumerate(args.tasks):
             logger.info(f"Running benchmark for task: {task_name} ({j + 1}/{len(args.tasks)})")

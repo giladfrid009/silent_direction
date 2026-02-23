@@ -3,6 +3,7 @@ import argparse
 import sys
 import copy
 from typing import Dict, List, Any
+from pyarrow import dataset
 import torch
 import gc
 
@@ -17,11 +18,13 @@ SCRIPT_PATH = "scripts/run_norm.py"
 DEFAULT_RUN_ARGS = {
     "log_dir": "logs",
     "dataset": "hh-rlhf",
+    "test_datasets": ["hh-rlhf", "slim-orca", "oasst2", "tulu-v2", "lmsys-1m"],
     "train_batch": 8,
-    "eval_batch": 8,
+    "train_steps": 20000,
     "train_time": 40,
-    "train_steps": 2000,
-    "train_patience": 100,
+    "train_patience": 500,
+    "eval_batch": 8,
+    "eval_steps": 250,
 }
 
 # =============================================================================
@@ -32,10 +35,39 @@ DEFAULT_RUN_ARGS = {
 # Using clear names for standard setups.
 # These dictionaries are essentially just sets of CLI arguments.
 
-EXP_SETUP_PLACEHOLDER = dict(
+EXP_SETUP_HH_RLHF = dict(
     learning_rate=0.01,
     kl_weight=1.0,
     proj_weigh=0.1,
+    dataset="hh-rlhf",
+)
+
+EXP_SETUP_SLIM_ORCA = dict(
+    learning_rate=0.01,
+    kl_weight=1.0,
+    proj_weigh=0.1,
+    dataset="slim-orca",
+)
+
+EXP_SETUP_OASST2 = dict(
+    learning_rate=0.01,
+    kl_weight=1.0,
+    proj_weigh=0.1,
+    dataset="oasst2",
+)
+
+EXP_SETUP_TULU_V2 = dict(
+    learning_rate=0.01,
+    kl_weight=1.0,
+    proj_weigh=0.1,
+    dataset="tulu-v2",
+)
+
+EXP_SETUP_LMSYS = dict(
+    learning_rate=0.01,
+    kl_weight=1.0,
+    proj_weigh=0.1,
+    dataset="lmsys-1m",
 )
 
 
@@ -82,94 +114,124 @@ def get_search_locations(
 
     return locations
 
-
 MODELS = {
     "llama-2-7b-chat": {
         "experiments": {
-            "setup": EXP_SETUP_PLACEHOLDER,
+            "exp-rlhb": EXP_SETUP_HH_RLHF,
+            "exp-orca": EXP_SETUP_SLIM_ORCA,
+            "exp-oasst2": EXP_SETUP_OASST2,
+            "exp-tulu": EXP_SETUP_TULU_V2,
+            "exp-lmsys": EXP_SETUP_LMSYS,
         },
         # CLI Arguments
         "model": "meta-llama/Llama-2-7b-chat-hf",
         "layers": get_search_locations(
             num_layers=32,
-            num_probes=3,
-        ),
-    },
-    "llama-3.1-8b": {
-        "experiments": {
-            "setup": EXP_SETUP_PLACEHOLDER,
-        },
-        # CLI Arguments
-        "model": "meta-llama/Llama-3.1-8B-Instruct",
-        "layers": get_search_locations(
-            num_layers=32,
-            num_probes=4,
-        ),
-    },
-    "gemma-2b-it": {
-        "experiments": {
-            "setup": EXP_SETUP_PLACEHOLDER,
-        },
-        # CLI Arguments
-        "model": "google/gemma-2b-it",
-        "layers": get_search_locations(
-            num_layers=18,
-            num_probes=4,
-        ),
-    },
-    "gemma-3-1b-it": {
-        "experiments": {
-            "setup": EXP_SETUP_PLACEHOLDER,
-        },
-        # CLI Arguments
-        "model": "google/gemma-3-1b-it",
-        "layers": get_search_locations(
-            num_layers=26,
-            num_probes=4,
-        ),
-    },
-    "qwen-1.5-7b-chat": {
-        "experiments": {
-            "setup": EXP_SETUP_PLACEHOLDER,
-        },
-        # CLI Arguments
-        "model": "Qwen/Qwen1.5-7B-Chat",
-        "layers": get_search_locations(
-            num_layers=32,
-            num_probes=4,
-        ),
-    },
-    "qwen-3-8b-chat": {
-        "experiments": {
-            "setup": EXP_SETUP_PLACEHOLDER,
-        },
-        # CLI Arguments
-        "model": "Qwen/Qwen3-8B",
-        "layers": get_search_locations(
-            num_layers=36,
-            num_probes=4,
+            num_probes=8,
+            attn_path=None,
+            mlp_path=None,
         ),
     },
     "phi-3-mini-it": {
         "experiments": {
-            "setup": EXP_SETUP_PLACEHOLDER,
+            "exp-rlhb": EXP_SETUP_HH_RLHF,
+            "exp-orca": EXP_SETUP_SLIM_ORCA,
+            "exp-oasst2": EXP_SETUP_OASST2,
+            "exp-tulu": EXP_SETUP_TULU_V2,
+            "exp-lmsys": EXP_SETUP_LMSYS,
         },
         # CLI Arguments
         "model": "microsoft/Phi-3-mini-4k-instruct",
         "layers": get_search_locations(
             num_layers=32,
-            num_probes=4,
+            num_probes=8,
+            attn_path=None,
+            mlp_path=None,
         ),
     },
-    "phi-4-mini-it": {
+    "gemma-2b-it": {
         "experiments": {
-            "setup": EXP_SETUP_PLACEHOLDER,
+            # "exp-rlhb": EXP_SETUP_HH_RLHF,
+            # "exp-orca": EXP_SETUP_SLIM_ORCA,
+            # "exp-oasst2": EXP_SETUP_OASST2,
+            "exp-tulu": EXP_SETUP_TULU_V2,
+            # "exp-lmsys": EXP_SETUP_LMSYS,
         },
         # CLI Arguments
-        "model": "microsoft/Phi-4-mini-instruct",
+        "model": "google/gemma-2b-it",
         "layers": get_search_locations(
-            num_layers=32,
-            num_probes=4,
+            num_layers=18,
+            num_probes=8,
+            attn_path=None,
+            mlp_path=None,
+        ),
+    },
+    "gemma-2-2b-it": {
+        "experiments": {
+            # "exp-rlhb": EXP_SETUP_HH_RLHF,
+            # "exp-orca": EXP_SETUP_SLIM_ORCA,
+            # "exp-oasst2": EXP_SETUP_OASST2,
+            "exp-tulu": EXP_SETUP_TULU_V2,
+            # "exp-lmsys": EXP_SETUP_LMSYS,
+        },
+        # CLI Arguments
+        "model": "google/gemma-2-2b-it",
+        "layers": get_search_locations(
+            num_layers=26,
+            num_probes=8,
+            attn_path=None,
+            mlp_path=None,
+        ),
+    },
+    "gemma-2-27b-it": {
+        "experiments": {
+            # "exp-rlhb": EXP_SETUP_HH_RLHF,
+            # "exp-orca": EXP_SETUP_SLIM_ORCA,
+            # "exp-oasst2": EXP_SETUP_OASST2,
+            "exp-tulu": EXP_SETUP_TULU_V2,
+            # "exp-lmsys": EXP_SETUP_LMSYS,
+        },
+        # CLI Arguments
+        "model": "google/gemma-2-27b-it",
+        "layers": get_search_locations(
+            num_layers=46,
+            num_probes=8,
+            attn_path=None,
+            mlp_path=None,
+        ),
+    },
+    "qwen-2.5-3b-instruct": {
+        "experiments": {
+            # "exp-rlhb": EXP_SETUP_HH_RLHF,
+            # "exp-orca": EXP_SETUP_SLIM_ORCA,
+            # "exp-oasst2": EXP_SETUP_OASST2,
+            "exp-tulu": EXP_SETUP_TULU_V2,
+            # "exp-lmsys": EXP_SETUP_LMSYS,
+        },
+        # CLI Arguments
+        "model": "Qwen/Qwen2.5-3B-Instruct",
+        "layers": get_search_locations(
+            num_layers=36,
+            num_probes=8,
+            attn_path=None,
+            mlp_path=None,
+        ),
+    },
+    "phi-3-medium-it": {
+        "experiments": {
+            # "exp-rlhb": EXP_SETUP_HH_RLHF,
+            # "exp-orca": EXP_SETUP_SLIM_ORCA,
+            # "exp-oasst2": EXP_SETUP_OASST2,
+            "exp-tulu": EXP_SETUP_TULU_V2,
+            # "exp-lmsys": EXP_SETUP_LMSYS,
+        },
+        # CLI Arguments
+        "model": "microsoft/Phi-3-medium-4k-instruct",
+        "layers": get_search_locations(
+            num_layers=40,
+            num_probes=8,
+            attn_path=None,
+            mlp_path=None,
         ),
     },
 }

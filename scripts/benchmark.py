@@ -375,7 +375,7 @@ def main(args: argparse.Namespace):
         logger.info(f"Found {len(metas)} meta files for model {model_name}.")
 
         logger.info(f"Loading model: {model_name}")
-        model, tokenizer = load_model(model_name, dtype=torch.bfloat16, device_map="cuda:0")
+        model, tokenizer = load_model(model_name, device_map="cuda:0")
 
         for meta, path in zip(metas, paths):
             model_tasks = _get_tasks(meta, args)

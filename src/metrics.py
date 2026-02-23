@@ -38,6 +38,7 @@ class Metrics:
 
         return torch.tensor(agreements).mean().item()
 
+    # TODO: implement reduction
     @staticmethod
     @torch.inference_mode()
     def top1_accuracy(

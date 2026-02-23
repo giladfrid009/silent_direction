@@ -73,7 +73,7 @@ def load_hf_tokenizer(
 
 def load_hf_model(
     model_name: str,
-    dtype: torch.dtype = torch.bfloat16,
+    dtype: torch.dtype | str = "auto",
     device_map: str = "cuda:0",
     tokenizer_name: str | None = None,
     adapter_name: str | None = None,

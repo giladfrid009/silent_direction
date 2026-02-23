@@ -106,7 +106,7 @@ class PrincipalExperiment(Experiment):
         stop_criteria: StopCriteria,
     ) -> dict[str, float]:
 
-        metrics = evaluate(
+        metrics, sample_data = evaluate(
             targeted_model=targeted_model,
             layer=layer_name,
             direction=direction,
