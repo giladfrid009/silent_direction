@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 import sys
 import pathlib
+import pandas as pd
 
 # set pythonpath to the main module directory
 module_dir = pathlib.Path(__file__).parent.resolve().parent
@@ -104,7 +105,7 @@ class PrincipalExperiment(Experiment):
         direction: torch.Tensor,
         dl_test: TableLoader,
         stop_criteria: StopCriteria,
-    ) -> dict[str, float]:
+    ) -> tuple[dict[str, float], pd.DataFrame | None]:
 
         metrics, sample_data = evaluate(
             targeted_model=targeted_model,
@@ -120,7 +121,9 @@ class PrincipalExperiment(Experiment):
             top10_agr=metrics["top10_agr"],
         )
 
-        return metrics
+        outliers = None # TODO: implement
+
+        return metrics, outliers
 
 
 if __name__ == "__main__":

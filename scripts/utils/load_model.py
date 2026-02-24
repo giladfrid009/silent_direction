@@ -70,6 +70,16 @@ def load_model(
     config.setdefault("dtype", dtype)
     config.setdefault("hf_token", hf_token)
 
+    if model_name == "meta-llama/Llama-2-7b":
+        config["dtype"] = torch.bfloat16  # doesn't train otherwise at all
+
+    if model_name == "meta-llama/Llama-2-7b-chat-hf":
+        config["dtype"] = torch.bfloat16  # doesn't train otherwise at all
+
+    if model_name == "microsoft/phi-1_5":
+        config["dtype"] = torch.bfloat16  # TODO: test.
+        pass
+
     model, tokenizer = load_hf_model(**config)
 
     model.eval()

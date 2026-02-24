@@ -1,5 +1,6 @@
 import torch
 from tqdm.auto import tqdm
+from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from src.model import TargetedModel
 from src.data import TableLoader, TableIterator
@@ -23,8 +24,20 @@ def train_principal(
 
     stop_criteria.reset()
     layer_dim = probe_layer_dim(targeted_model, layer)
+
     w = torch.randn(layer_dim, device=targeted_model.device, dtype=targeted_model.dtype, requires_grad=True)
     optim = torch.optim.Adam([w], lr=learning_rate)
+    sched = None
+
+    if stop_criteria.patience is not None:
+        sched = ReduceLROnPlateau(
+            optim,
+            mode="max",
+            factor=0.1,
+            patience=int(stop_criteria.patience // 2.5),
+            threshold_mode="abs",
+            threshold=stop_criteria.patience_delta,
+        )
 
     best_score = -float("inf")
     best_direction = w.clone().detach()
@@ -93,14 +106,14 @@ def train_principal(
             targets_mask=targets_mask,
         )
 
-        score_val = redundancy_score_principal(
+        score = redundancy_score_principal(
             proj_var=proj_var_rel.item(),
-            top1_acc=top1_acc,
-            top10_agr=top10_agr,
+            top1_acc=top1_acc.item(),
+            top10_agr=top10_agr.item(),
         )
 
-        if score_val > best_score:
-            best_score = score_val
+        if score > best_score:
+            best_score = score
             best_direction = v.detach().clone()
 
         # compute loss and update
@@ -108,19 +121,23 @@ def train_principal(
         loss.backward()
         optim.step()
 
+        stop_criteria.update(value=score)
+        if sched is not None:
+            sched.step(score)
+
         METRICS = {
             "loss": loss.item(),
             "kl_div": kl_div.item(),
             "proj_var_rel": proj_var_rel.item(),
-            "top1_acc": top1_acc,
-            "top10_agr": top10_agr,
-            "score": score_val,
+            "top1_acc": top1_acc.item(),
+            "top10_agr": top10_agr.item(),
+            "score": score,
+            "learning_rate": sched.get_last_lr()[0] if sched is not None else learning_rate,
             "best_score": best_score,
         }
 
         history.append(METRICS)
         pbar.set_postfix({k: f"{v:.4f}" for k, v in METRICS.items()})
-        stop_criteria.update(value=score_val)
 
     pbar.close()
 

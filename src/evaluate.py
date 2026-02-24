@@ -1,6 +1,7 @@
 import torch
 from tqdm import tqdm
 import pandas as pd
+from collections import defaultdict
 
 from src.model import TargetedModel
 from src.activation_extractor import ActivationExtractor, ActivationManipulator
@@ -12,7 +13,6 @@ from src.principal.utils import compute_empirical_mean
 from src.config import StopCriteria
 
 
-# TODO: fix all places where we call evaluate, to expect that we also return pd.DataFrame
 @torch.inference_mode()
 def evaluate(
     targeted_model: TargetedModel,
@@ -30,18 +30,8 @@ def evaluate(
     extractor = ActivationExtractor(targeted_model.model, layer)
     manipulator = ActivationManipulator(targeted_model.model, layer, manipulation_fn=subtract_projection)
 
-    global_metrics = {
-        "top1_acc": 0.0,
-        "top10_agr": 0.0,
-        "kl_div": 0.0,
-        "proj_l2_raw": 0.0,
-        "proj_l2_rel": 0.0,
-        "proj_var_raw": 0.0,
-        "proj_var_rel": 0.0,
-        "full_l2_raw": 0.0,
-        "full_var_raw": 0.0,
-        "full_var_rel": 0.0,
-    }
+    dataset_metrics = defaultdict(lambda: 0.0)
+    sample_metrics = defaultdict(list)
 
     mean_activation, mean_activation_normalized = compute_empirical_mean(
         targeted_model=targeted_model,
@@ -50,13 +40,8 @@ def evaluate(
         iterations=100,  # TODO: currently hard-coded
     )
 
-    current_step = 0
     iterations = min(stop_criteria.max_steps, len(dl_eval))
-    pbar = tqdm(TableIterator(dl_eval, num_batches=iterations), desc="Evaluating", leave=False)
-
-    all_results = []
-
-    for i, batch in enumerate(pbar):
+    for batch in tqdm(TableIterator(dl_eval, num_batches=iterations), desc="Evaluating", leave=False):
         if stop_criteria.should_stop():
             break
 
@@ -72,94 +57,96 @@ def evaluate(
         with manipulator.capture():
             modified_logits = targeted_model.forward(encodings).logits
 
-        batch_metrics = {}
+        batch_metrics: dict[str, torch.Tensor] = {}
 
         batch_metrics["proj_l2_raw"] = Loss.projection_l2_norm(
             activations=activations,
             direction=direction,
             targets_mask=targets_mask,
-            reduction="mean",
-        ).item()
+            reduction="samplesum",
+        )
 
         batch_metrics["proj_l2_rel"] = Loss.projection_l2_norm(
             activations=activations_normalized,
             direction=direction,
             targets_mask=targets_mask,
-            reduction="mean",
-        ).item()
+            reduction="samplesum",
+        )
 
         batch_metrics["proj_var_raw"] = Loss.projection_total_variance(
             activations=activations,
             direction=direction,
             targets_mask=targets_mask,
             mean_activation=mean_activation,
-            reduction="mean",
-        ).item()
+            reduction="samplesum",
+        )
 
         batch_metrics["proj_var_rel"] = Loss.projection_total_variance(
             activations=activations_normalized,
             direction=direction,
             targets_mask=targets_mask,
             mean_activation=mean_activation_normalized,
-            reduction="mean",
-        ).item()
+            reduction="samplesum",
+        )
 
         batch_metrics["full_l2_raw"] = Loss.l2_norm(
             activations=activations,
             targets_mask=targets_mask,
-            reduction="mean",
-        ).item()
+            reduction="samplesum",
+        )
 
         batch_metrics["full_var_raw"] = Loss.total_variance(
             activations=activations,
             targets_mask=targets_mask,
             mean_activation=mean_activation,
-            reduction="mean",
-        ).item()
+            reduction="samplesum",
+        )
 
         batch_metrics["full_var_rel"] = Loss.total_variance(
             activations=activations_normalized,
             targets_mask=targets_mask,
             mean_activation=mean_activation_normalized,
-            reduction="mean",
-        ).item()
+            reduction="samplesum",
+        )
 
         batch_metrics["kl_div"] = Loss.kl_divergence(
             baseline_logits=baseline_logits,
             modified_logits=modified_logits,
             targets_mask=targets_mask,
-            reduction="batchmean",
-        ).item()
+            reduction="samplesum",
+        )
 
-        # TODO: implement reduction
         batch_metrics["top1_acc"] = Metrics.top1_accuracy(
             baseline_logits=baseline_logits,
             modified_logits=modified_logits,
             targets_mask=targets_mask,
+            reduction="samplesum",
         )
 
-        # TODO: implement reduction
         batch_metrics["top10_agr"] = Metrics.topk_agreement(
             baseline_logits=baseline_logits,
             modified_logits=modified_logits,
             targets_mask=targets_mask,
             top_k=10,
+            reduction="samplesum",
         )
-        
-        # update global metrics
-        global_metrics = {k: global_metrics[k] + batch_metrics[k] for k in global_metrics.keys()}
 
-        # update progress bar
-        current_step += 1
-        pbar.set_postfix({k: f"{v / current_step:.4f}" for k, v in batch_metrics.items()})
+        # update per-sample metrics
+        sample_elements = targets_mask.sum(dim=1).clamp(min=1)  # shape: (batch_size,)
+        sample_metrics["prompt"].extend(conversations)
+        for metric_name, metric_value in batch_metrics.items():
+            sample_metrics[metric_name].extend((metric_value / sample_elements).tolist())
+
+        # update global metrics
+        batch_elements = targets_mask.sum().item()
+        dataset_metrics["total_elements"] += batch_elements
+        for metric_name, metric_value in batch_metrics.items():
+            dataset_metrics[metric_name] += metric_value.sum().item()
+
         stop_criteria.update()
 
-        for conv in conversations:
-            all_results.append({"prompt": conv, "batch_index": i, **batch_metrics})
+    total_elements = max(dataset_metrics.pop("total_elements"), 1)
+    dataset_metrics = {k: v / total_elements for k, v in dataset_metrics.items()}
+    sample_metrics = pd.DataFrame(sample_metrics)
 
-    global_metrics = {k: v / current_step for k, v in global_metrics.items()}
-    all_results = pd.DataFrame(all_results)
-    
-    pbar.close()
-
-    return global_metrics, all_results
+    return dataset_metrics, sample_metrics

@@ -1,6 +1,7 @@
 from argparse import ArgumentParser
 import sys
 import pathlib
+import pandas as pd
 
 # set pythonpath to the main module directory
 module_dir = pathlib.Path(__file__).parent.resolve().parent
@@ -36,7 +37,7 @@ class NormExperiment(Experiment):
             metavar="FLOAT",
             help="Weight for the projection term in the loss function.",
         )
-        
+
         parser.add_argument(
             "--kl_weight",
             type=float,
@@ -104,7 +105,7 @@ class NormExperiment(Experiment):
         direction: torch.Tensor,
         dl_test: TableLoader,
         stop_criteria: StopCriteria,
-    ) -> dict[str, float]:
+    ) -> tuple[dict[str, float], pd.DataFrame | None]:
 
         metrics, sample_data = evaluate(
             targeted_model=targeted_model,
@@ -120,7 +121,22 @@ class NormExperiment(Experiment):
             top10_agr=metrics["top10_agr"],
         )
 
-        return metrics
+        outliers = self.collect_outliers(sample_data)
+
+        return metrics, outliers
+
+    def collect_outliers(self, sample_data: pd.DataFrame, sigma: float = 3.0) -> pd.DataFrame:
+        # for sample_data df leave a single sample per batch_index
+        unique_samples = sample_data.drop_duplicates(subset=["batch_index"])
+
+        kl_mean = unique_samples["kl_div"].mean()
+        kl_std = unique_samples["kl_div"].std()
+        outliers = unique_samples[unique_samples["kl_div"] > kl_mean + sigma * kl_std]
+
+        # then save the batch_index of these samples
+        outlier_indices = outliers["batch_index"].tolist()
+        outlier_samples = sample_data[sample_data["batch_index"].isin(outlier_indices)]
+        return outlier_samples
 
 
 if __name__ == "__main__":

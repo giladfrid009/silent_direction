@@ -16,24 +16,37 @@ class Loss:
         Args:
             activations: tensor of activations, shape (batch_size, seq_len, hidden_size)
             targets_mask: mask indicating target positions, shape (batch_size, seq_len)
-            reduce: reduction method, either "mean", "sum" or "none"
+            reduction: reduction method, either "mean", "sum" or "none"
 
         Returns:
             L2 norm of the activations.
             - If reduce is "none", returns tensor of norms for each position, of shape (num_target_positions,)
             - If reduce is "mean" or "sum", returns a single scalar tensor.
+            - If reduce is "samplemean" or "samplesum", returns mean or sum norm per sample (averaged over target positions), of shape (batch_size,)
         """
-        assert reduction in {"mean", "sum", "none"}, f"Invalid reduce method: {reduction}"
+        assert reduction in {"mean", "sum", "none", "samplemean", "samplesum"}, f"Invalid reduce method: {reduction}"
 
         activations = activations[targets_mask].view(-1, activations.size(-1))
         norms = torch.norm(activations, dim=-1)
 
         if reduction == "mean":
             return norms.mean()
+
         if reduction == "sum":
             return norms.sum()
+
         if reduction == "none":
             return norms
+
+        if reduction == "samplemean":
+            result = torch.zeros_like(targets_mask, dtype=norms.dtype)
+            result[targets_mask] = norms
+            return result.sum(dim=-1) / targets_mask.sum(dim=-1).clamp(min=1)
+
+        if reduction == "samplesum":
+            result = torch.zeros_like(targets_mask, dtype=norms.dtype)
+            result[targets_mask] = norms
+            return result.sum(dim=-1)
 
         raise ValueError(f"Invalid reduce method: {reduction}")
 
@@ -51,14 +64,15 @@ class Loss:
             activations: tensor of activations, shape (batch_size, seq_len, hidden_size)
             targets_mask: mask indicating target positions, shape (batch_size, seq_len)
             direction: direction vector to project onto, shape (hidden_size,)
-            reduce: reduction method, either "mean", "sum" or "none"
+            reduce: reduction method, either "mean", "sum", "samplemean", or "samplesum"
 
         Returns:
             L2 norm of the projected activations.
             - If reduce is "none", returns tensor of norms for each position, of shape (num_target_positions,)
             - If reduce is "mean" or "sum", returns a single scalar tensor.
+            - If reduce is "samplemean" or "samplesum", returns mean or sum norm per sample (averaged over target positions), of shape (batch_size,)
         """
-        assert reduction in {"mean", "sum", "none"}, f"Invalid reduce method: {reduction}"
+        assert reduction in {"mean", "sum", "none", "samplemean", "samplesum"}, f"Invalid reduce method: {reduction}"
 
         direction = F.normalize(direction, dim=-1)
         activations = activations[targets_mask].view(-1, activations.size(-1))
@@ -66,12 +80,24 @@ class Loss:
 
         if reduction == "mean":
             return norms.mean()
+
         if reduction == "sum":
             return norms.sum()
+
         if reduction == "none":
             return norms
 
-        raise ValueError(f"Invalid reduce method: {reduction}")
+        if reduction == "samplemean":
+            result = torch.zeros_like(targets_mask, dtype=norms.dtype)
+            result[targets_mask] = norms
+            return result.sum(dim=-1) / targets_mask.sum(dim=-1).clamp(min=1)
+
+        if reduction == "samplesum":
+            result = torch.zeros_like(targets_mask, dtype=norms.dtype)
+            result[targets_mask] = norms
+            return result.sum(dim=-1)
+
+        raise ValueError(f"Invalid reduction method: {reduction}")
 
     @staticmethod
     def total_variance(
@@ -92,7 +118,7 @@ class Loss:
         Returns:
             variance of the activations
         """
-        assert reduction in {"mean", "sum", "none"}, f"Invalid reduce method: {reduction}"
+        assert reduction in {"mean", "sum", "none", "samplemean", "samplesum"}, f"Invalid reduce method: {reduction}"
 
         activations = activations[targets_mask].view(-1, activations.size(-1))
         diffs = activations - mean_activation.unsqueeze(0)
@@ -102,12 +128,24 @@ class Loss:
 
         if reduction == "mean":
             return var.mean()
+
         if reduction == "sum":
             return var.sum()
+
         if reduction == "none":
             return var
 
-        raise ValueError(f"Invalid reduce method: {reduction}")
+        if reduction == "samplemean":
+            result = torch.zeros_like(targets_mask, dtype=var.dtype)
+            result[targets_mask] = var
+            return result.sum(dim=-1) / targets_mask.sum(dim=-1).clamp(min=1)
+
+        if reduction == "samplesum":
+            result = torch.zeros_like(targets_mask, dtype=var.dtype)
+            result[targets_mask] = var
+            return result.sum(dim=-1)
+
+        raise ValueError(f"Invalid reduction method: {reduction}")
 
     @staticmethod
     def projection_total_variance(
@@ -130,7 +168,7 @@ class Loss:
             variance of the projected activations
         """
 
-        assert reduction in {"mean", "sum", "none"}, f"Invalid reduce method: {reduction}"
+        assert reduction in {"mean", "sum", "none", "samplemean", "samplesum"}, f"Invalid reduce method: {reduction}"
 
         direction = F.normalize(direction, dim=-1)
 
@@ -143,12 +181,24 @@ class Loss:
 
         if reduction == "mean":
             return var.mean()
+
         if reduction == "sum":
             return var.sum()
+
         if reduction == "none":
             return var
 
-        raise ValueError(f"Invalid reduce method: {reduction}")
+        if reduction == "samplemean":
+            result = torch.zeros_like(targets_mask, dtype=var.dtype)
+            result[targets_mask] = var
+            return result.sum(dim=-1) / targets_mask.sum(dim=-1).clamp(min=1)
+
+        if reduction == "samplesum":
+            result = torch.zeros_like(targets_mask, dtype=var.dtype)
+            result[targets_mask] = var
+            return result.sum(dim=-1)
+
+        raise ValueError(f"Invalid reduction method: {reduction}")
 
     @staticmethod
     def kl_divergence(
@@ -161,9 +211,23 @@ class Loss:
         """
         Compute KL divergence between two logit distributions over all non-padding tokens.
 
+        Args:
+            baseline_logits: (batch_size, seq_len, vocab_size) logits from the original model
+            modified_logits: (batch_size, seq_len, vocab_size) logits from the modified model
+            targets_mask: (batch_size, seq_len) boolean mask indicating which positions are targets (e.g. non-padding tokens)
+            top_k: if not None, compute KL divergence only over the top_k logits according to the baseline_logits
+            reduction: how to reduce the KL divergence scores across positions ("mean", "sum", "none", "samplemean", "samplesum")
+
         Returns:
             Mean KL divergence across all targets positions
+
+            - If reduction is "none", returns tensor of KL divergence scores for each position, of shape (num_target_positions,)
+            - If reduction is "mean" or "sum", returns a single scalar tensor.
+            - If reduction is "samplemean" or "samplesum", returns mean or sum KL divergence score per sample (averaged over target positions), of shape (batch_size,)
         """
+        if reduction not in {"mean", "sum", "batchmean", "none", "samplemean", "samplesum"}:
+            raise ValueError(f"Invalid reduction method: {reduction}")
+
         if top_k is not None:
             # select only top_k logits according to the baseline_logits and compute over that
             topk_values, topk_indices = torch.topk(baseline_logits, top_k, dim=-1)
@@ -179,7 +243,25 @@ class Loss:
         log_baselines = F.log_softmax(baseline_logits, dim=-1)
         log_modified = F.log_softmax(modified_logits, dim=-1)
 
-        return F.kl_div(log_modified, log_baselines, reduction=reduction, log_target=True)
+        if reduction not in ["samplemean", "samplesum"]:
+            return F.kl_div(log_modified, log_baselines, reduction=reduction, log_target=True)
+
+        kl_div = F.kl_div(log_modified, log_baselines, reduction="none", log_target=True)
+        kl_div_summed = kl_div.sum(dim=-1)
+
+        if reduction == "none":
+            return kl_div_summed
+
+        result = torch.zeros_like(targets_mask, dtype=kl_div.dtype)
+        result[targets_mask] = kl_div_summed
+
+        if reduction == "samplemean":
+            return result.sum(dim=-1) / targets_mask.sum(dim=-1).clamp(min=1)
+
+        if reduction == "samplesum":
+            return result.sum(dim=-1)
+
+        raise ValueError(f"Invalid reduction method: {reduction}")
 
     @staticmethod
     def js_divergence(

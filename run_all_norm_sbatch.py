@@ -424,7 +424,7 @@ if __name__ == "__main__":
     # SLURM options
     parser.add_argument("--gpu", type=str, default="L40:1", help="GPU resource for --gres (e.g. '1', 'A100:1', 'PRO6000:1').")
     parser.add_argument("--partition", type=str, default=None, help="SLURM partition to submit to.")
-    parser.add_argument("--cpus", type=int, default=None, help="Override --cpus-per-task.")
+    parser.add_argument("--cpus", type=int, default=8, help="Override --cpus-per-task.")
     parser.add_argument("--dry_run", action="store_true", help="Print sbatch commands without submitting.")
 
     args = parser.parse_args()

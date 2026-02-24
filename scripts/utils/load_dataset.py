@@ -121,12 +121,12 @@ def load_tulu_v2() -> DatasetDict:
         return DatasetDict.load_from_disk(data_directory)
 
     def map_fn(example: Any) -> dict:
-        conv = [{"role": msg["role"], "content": msg["content"]} for msg in example["messages"]]
+        conv = [{"role": msg["role"], "content": msg["content"]} for msg in example["messages"] if msg["role"] in ["user", "assistant"]]
         return {"prompt": conv}
 
     ds_train = datasets.load_dataset("allenai/tulu-v2-sft-mixture", split="train", streaming=True)  # type: ignore
     ds_train = ds_train.map(map_fn, remove_columns=["dataset", "id", "messages"])
-    ds_train = ds_train.filter(partial(validate_conversation, allow_system=True))
+    ds_train = ds_train.filter(partial(validate_conversation, allow_system=False))
     ds_train = materialize_dataset(ds_train, total=326_000)
 
     ds_dict = split_dataset(ds_train, train_size=50_000, eval_size=5000, test_size=5000)

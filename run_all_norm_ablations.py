@@ -10,7 +10,7 @@ import gc
 # Global Constants & Configuration
 # =============================================================================
 
-PROJECT_NAME = "silent-norm"
+PROJECT_NAME = "silent-norm-ablations"
 SCRIPT_PATH = "scripts/run_norm.py"
 
 # Default Arguments shared across all runs unless overridden
@@ -33,6 +33,57 @@ DEFAULT_RUN_ARGS = {
 # Define reusable experiment configurations
 # Using clear names for standard setups.
 # These dictionaries are essentially just sets of CLI arguments.
+
+# baseline setting
+EXP_SETUP_BASELINE_LR_TULU = dict(
+    learning_rate=0.1,
+    kl_weight=10.0,
+    proj_weigh=1.0,
+    dataset="tulu-v2",
+)
+
+# lower LR by 5x
+EXP_SETUP_SMALL_LR_TULU = dict(
+    learning_rate=0.02,
+    kl_weight=10.0,
+    proj_weigh=1.0,
+    dataset="tulu-v2",
+)
+
+# lower LR by 2.5x
+EXP_SETUP_MEDIUM_LR_TULU = dict(
+    learning_rate=0.04,
+    kl_weight=10.0,
+    proj_weigh=1.0,
+    dataset="tulu-v2",
+)
+
+# higher LR by 2.5x
+EXP_SETUP_LARGE_LR_TULU = dict(
+    learning_rate=0.25,
+    kl_weight=10.0,
+    proj_weigh=1.0,
+    dataset="tulu-v2",
+)
+
+# higher kl_weight by 2x
+EXP_SETUP_HIGH_KL_TULU = dict(
+    learning_rate=0.1,
+    kl_weight=20.0,
+    proj_weigh=1.0,
+    dataset="tulu-v2",
+)
+
+# lower kl_weight by 2x
+EXP_SETUP_SMALL_KL_TULU = dict(
+    learning_rate=0.1,
+    kl_weight=5.0,
+    proj_weigh=1.0,
+    dataset="tulu-v2",
+)
+
+########
+
 
 EXP_SETUP_HH_RLHF = dict(
     learning_rate=0.1,
@@ -113,128 +164,112 @@ def get_search_locations(
 
     return locations
 
-
 MODELS = {
     "llama-2-7b-chat": {
         "experiments": {
-            "exp-rlhb": EXP_SETUP_HH_RLHF,
-            "exp-orca": EXP_SETUP_SLIM_ORCA,
-            "exp-oasst2": EXP_SETUP_OASST2,
-            "exp-tulu": EXP_SETUP_TULU_V2,
-            "exp-lmsys": EXP_SETUP_LMSYS,
+            "baseline-tulu": EXP_SETUP_BASELINE_LR_TULU,
+            "small-lr-tulu": EXP_SETUP_SMALL_LR_TULU,
+            "medium-lr-tulu": EXP_SETUP_MEDIUM_LR_TULU,
+            "large-lr-tulu": EXP_SETUP_LARGE_LR_TULU,
+            "small-kl-tulu": EXP_SETUP_SMALL_KL_TULU,
+            "high-kl-tulu": EXP_SETUP_HIGH_KL_TULU,
         },
         # CLI Arguments
         "model": "meta-llama/Llama-2-7b-chat-hf",
         "layers": get_search_locations(
             num_layers=32,
-            num_probes=8,
+            num_probes=3,
             attn_path=None,
             mlp_path=None,
         ),
     },
     "phi-3-mini-it": {
         "experiments": {
-            "exp-rlhb": EXP_SETUP_HH_RLHF,
-            "exp-orca": EXP_SETUP_SLIM_ORCA,
-            "exp-oasst2": EXP_SETUP_OASST2,
-            "exp-tulu": EXP_SETUP_TULU_V2,
-            "exp-lmsys": EXP_SETUP_LMSYS,
+            "baseline-tulu": EXP_SETUP_BASELINE_LR_TULU,
+            "small-lr-tulu": EXP_SETUP_SMALL_LR_TULU,
+            "medium-lr-tulu": EXP_SETUP_MEDIUM_LR_TULU,
+            "large-lr-tulu": EXP_SETUP_LARGE_LR_TULU,
+            "small-kl-tulu": EXP_SETUP_SMALL_KL_TULU,
+            "high-kl-tulu": EXP_SETUP_HIGH_KL_TULU,
         },
         # CLI Arguments
         "model": "microsoft/Phi-3-mini-4k-instruct",
         "layers": get_search_locations(
             num_layers=32,
-            num_probes=8,
-            attn_path=None,
-            mlp_path=None,
-        ),
-    },
-    "gemma-2b-it": {
-        "experiments": {
-            # "exp-rlhb": EXP_SETUP_HH_RLHF,
-            # "exp-orca": EXP_SETUP_SLIM_ORCA,
-            # "exp-oasst2": EXP_SETUP_OASST2,
-            "exp-tulu": EXP_SETUP_TULU_V2,
-            # "exp-lmsys": EXP_SETUP_LMSYS,
-        },
-        # CLI Arguments
-        "model": "google/gemma-2b-it",
-        "layers": get_search_locations(
-            num_layers=18,
-            num_probes=8,
-            attn_path=None,
-            mlp_path=None,
-        ),
-        "test_datasets": ["hh-rlhf", "oasst2", "tulu-v2", "lmsys-1m"],
-    },
-    "gemma-2-2b-it": {
-        "experiments": {
-            # "exp-rlhb": EXP_SETUP_HH_RLHF,
-            # "exp-orca": EXP_SETUP_SLIM_ORCA,
-            # "exp-oasst2": EXP_SETUP_OASST2,
-            "exp-tulu": EXP_SETUP_TULU_V2,
-            # "exp-lmsys": EXP_SETUP_LMSYS,
-        },
-        # CLI Arguments
-        "model": "google/gemma-2-2b-it",
-        "layers": get_search_locations(
-            num_layers=26,
-            num_probes=8,
-            attn_path=None,
-            mlp_path=None,
-        ),
-    },
-    "gemma-2-27b-it": {
-        "experiments": {
-            # "exp-rlhb": EXP_SETUP_HH_RLHF,
-            # "exp-orca": EXP_SETUP_SLIM_ORCA,
-            # "exp-oasst2": EXP_SETUP_OASST2,
-            "exp-tulu": EXP_SETUP_TULU_V2,
-            # "exp-lmsys": EXP_SETUP_LMSYS,
-        },
-        # CLI Arguments
-        "model": "google/gemma-2-27b-it",
-        "layers": get_search_locations(
-            num_layers=46,
-            num_probes=8,
+            num_probes=3,
             attn_path=None,
             mlp_path=None,
         ),
     },
     "qwen-2.5-3b-instruct": {
         "experiments": {
-            # "exp-rlhb": EXP_SETUP_HH_RLHF,
-            # "exp-orca": EXP_SETUP_SLIM_ORCA,
-            # "exp-oasst2": EXP_SETUP_OASST2,
-            "exp-tulu": EXP_SETUP_TULU_V2,
-            # "exp-lmsys": EXP_SETUP_LMSYS,
+            "baseline-tulu": EXP_SETUP_BASELINE_LR_TULU,
+            "small-lr-tulu": EXP_SETUP_SMALL_LR_TULU,
+            "medium-lr-tulu": EXP_SETUP_MEDIUM_LR_TULU,
+            "large-lr-tulu": EXP_SETUP_LARGE_LR_TULU,
+            "small-kl-tulu": EXP_SETUP_SMALL_KL_TULU,
+            "high-kl-tulu": EXP_SETUP_HIGH_KL_TULU,
         },
         # CLI Arguments
         "model": "Qwen/Qwen2.5-3B-Instruct",
         "layers": get_search_locations(
             num_layers=36,
-            num_probes=8,
+            num_probes=3,
             attn_path=None,
             mlp_path=None,
         ),
     },
-    "phi-3-medium-it": {
-        "experiments": {
-            # "exp-rlhb": EXP_SETUP_HH_RLHF,
-            # "exp-orca": EXP_SETUP_SLIM_ORCA,
-            # "exp-oasst2": EXP_SETUP_OASST2,
-            "exp-tulu": EXP_SETUP_TULU_V2,
-            # "exp-lmsys": EXP_SETUP_LMSYS,
-        },
-        # CLI Arguments
-        "model": "microsoft/Phi-3-medium-4k-instruct",
-        "layers": get_search_locations(
-            num_layers=40,
-            num_probes=8,
-            attn_path=None,
-            mlp_path=None,
-        ),
-    },
+    # "llama-2-7b-chat": {
+    #     "experiments": {
+    #         "exp-rlhb": EXP_SETUP_HH_RLHF,
+    #         "exp-orca": EXP_SETUP_SLIM_ORCA,
+    #         "exp-oasst2": EXP_SETUP_OASST2,
+    #         "exp-tulu": EXP_SETUP_TULU_V2,
+    #         "exp-lmsys": EXP_SETUP_LMSYS,
+    #     },
+    #     # CLI Arguments
+    #     "model": "meta-llama/Llama-2-7b-chat-hf",
+    #     "layers": get_search_locations(
+    #         num_layers=32,
+    #         num_probes=3,
+    #         attn_path=None,
+    #         mlp_path=None,
+    #     ),
+    # },
+    # "phi-3-mini-it": {
+    #     "experiments": {
+    #         "exp-rlhb": EXP_SETUP_HH_RLHF,
+    #         "exp-orca": EXP_SETUP_SLIM_ORCA,
+    #         "exp-oasst2": EXP_SETUP_OASST2,
+    #         "exp-tulu": EXP_SETUP_TULU_V2,
+    #         "exp-lmsys": EXP_SETUP_LMSYS,
+    #     },
+    #     # CLI Arguments
+    #     "model": "microsoft/Phi-3-mini-4k-instruct",
+    #     "layers": get_search_locations(
+    #         num_layers=32,
+    #         num_probes=3,
+    #         attn_path=None,
+    #         mlp_path=None,
+    #     ),
+    # },
+    # "qwen-2.5-3b-instruct": {
+    #     "experiments": {
+    #         "exp-rlhb": EXP_SETUP_HH_RLHF,
+    #         "exp-orca": EXP_SETUP_SLIM_ORCA,
+    #         "exp-oasst2": EXP_SETUP_OASST2,
+    #         "exp-tulu": EXP_SETUP_TULU_V2,
+    #         "exp-lmsys": EXP_SETUP_LMSYS,
+    #     },
+    #     # CLI Arguments
+    #     "model": "Qwen/Qwen2.5-3B-Instruct",
+    #     "layers": get_search_locations(
+    #         num_layers=36,
+    #         num_probes=3,
+    #         attn_path=None,
+    #         mlp_path=None,
+    #     ),
+    # },
 }
 
 
@@ -273,7 +308,7 @@ def collect_garbage():
     gc.collect()
 
 
-def run_experiment(model_key: str, iteration: int, total_iters: int, name_suffix: str, args):
+def run_experiment(model_key: str, iteration: int, total_iters: int, name_suffix: str):
     """Executes experiments for a single model configuration."""
 
     # 1. Retrieve Model Configuration
@@ -281,7 +316,7 @@ def run_experiment(model_key: str, iteration: int, total_iters: int, name_suffix
     model_conf = copy.deepcopy(MODELS[model_key])
 
     # Extract special control fields
-    model_nick = model_conf["model"].split("/")[-1]
+    model_nick = model_conf["model"].split("/")[-1] 
     model_experiments = model_conf.pop("experiments", {})
 
     print(f"\n>> Processing Model: {model_key} ({model_nick})")
@@ -318,25 +353,14 @@ def run_experiment(model_key: str, iteration: int, total_iters: int, name_suffix
             # print("Executing:", " ".join(cmd))
             collect_garbage()
             subprocess.run(cmd, shell=False, check=True)
-            
-        except KeyboardInterrupt as e:
+        except KeyboardInterrupt:
             print("\n🚨 Execution Interrupted by User")
-            raise e
-
+            sys.exit(1)
         except subprocess.CalledProcessError as e:
             print(f"❌ Error during execution of {full_run_name}: {e}")
-
-            if not args.allow_exceptions:
-                print("Aborting further runs due to error.")
-                raise e
-
             # Continue to next experiment/model
         except Exception as e:
             print(f"❌ Unexpected error: {e}")
-
-            if not args.allow_exceptions:
-                print("Aborting further runs due to error.")
-                raise e
 
 
 # =============================================================================
@@ -348,7 +372,6 @@ if __name__ == "__main__":
     parser.add_argument("--models", nargs="+", default=["all"], choices=list(MODELS.keys()) + ["all"], help="List of model keys to run, or 'all'")
     parser.add_argument("--name_suffix", type=str, default="", help="Suffix to append to experiment names.")
     parser.add_argument("--iters", type=int, default=1, help="Number of iterations to run each experiment.")
-    parser.add_argument("--allow_exceptions", action="store_true", help="Whether to continue running other experiments if one fails.")
 
     args = parser.parse_args()
 
@@ -360,4 +383,4 @@ if __name__ == "__main__":
     for model_key in target_models:
         for iteration in range(1, args.iters + 1):
             print(f"\n--- Iteration {iteration} / {args.iters} ---")
-            run_experiment(model_key, iteration, args.iters, args.name_suffix, args)
+            run_experiment(model_key, iteration, args.iters, args.name_suffix)

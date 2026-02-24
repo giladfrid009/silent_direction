@@ -1,0 +1,1 @@
+ps -u $USER -o pid,ppid,pgid,stat,%cpu,%mem,etime,cmd

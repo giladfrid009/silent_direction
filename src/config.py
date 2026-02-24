@@ -98,7 +98,7 @@ class StopCriteria:
         max_time: float | None = None,
         target_value: float | None = None,
         patience: int | None = None,
-        patience_delta: float = 1e-4,
+        patience_delta: float = 1e-3,
     ):
         """
         Container for various stopping criteria.

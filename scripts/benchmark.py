@@ -45,7 +45,7 @@ SUPPORTED_TASKS_CHAT = [
     "mastermind_easy",  # Symbolic logical deduction.
     "toxigen",  # Toxicity and bias sensitivity.
     "wmdp",  # Harmful knowledge and safety QA.
-    "super-glue-lm-eval-v1",
+    # "super-glue-lm-eval-v1", # TODO: i think its redundant
 ]
 
 SUPPORTED_TASKS_BASE = [
@@ -210,7 +210,7 @@ def _read_meta(path: pathlib.Path) -> Meta | None:
         logger.warning(f"Direction file not found for meta {path}. Skipping...")
         return None
 
-    direction = torch.load(direction_path, weights_only=True, map_location="cuda:0")
+    direction = torch.load(direction_path, weights_only=True)
 
     return Meta(
         model_name=metadata["model_name"],
@@ -286,13 +286,13 @@ def run_benchmark(
 ) -> dict[str, Any]:
 
     task_params = copy.deepcopy(TASK_PARAMS.get(task, {}))
+    meta.direction = meta.direction.to(model.device, model.dtype)
 
     if args.test_run:
         task_params["limit"] = 10
 
     def subtract_projection(activations: torch.Tensor) -> torch.Tensor:
-        direction = meta.direction.to(activations.device, activations.dtype)
-        projection = project(activations, direction, normalize=True)
+        projection = project(activations, meta.direction, normalize=True)
         return activations - projection
 
     manipulator = ActivationManipulator(model, meta.layer_name, manipulation_fn=subtract_projection)

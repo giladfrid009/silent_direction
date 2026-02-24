@@ -7,6 +7,7 @@ import time
 from contextlib import ExitStack
 import json
 import pathlib
+import pandas as pd
 
 from src.utils import env
 from src.utils.logging import create_logger, setup_logging, loglevel_names
@@ -262,6 +263,25 @@ class Experiment(ABC):
 
         logger.info(f"Saved metrics results to {bench_dir} folder.")
 
+    def save_outliers(
+        self,
+        bench_name: str,
+        outlier_samples: pd.DataFrame,
+        metric_tracker: MetricTracker,
+    ):
+        log_dir = metric_tracker.log_dir
+
+        if log_dir is None:
+            logger.warning("No log directory found. Skipping saving outliers.")
+            return
+
+        outlier_dir = pathlib.Path(log_dir) / "outliers"
+        outlier_dir.mkdir(parents=True, exist_ok=True)
+
+        outlier_samples.to_csv(outlier_dir / f"{bench_name}_outliers.csv", index=False)
+
+        logger.info(f"Saved outlier samples to {outlier_dir} folder.")
+
     @torch.inference_mode()
     def final_evaluation(
         self,
@@ -285,7 +305,7 @@ class Experiment(ABC):
             logger.info(f"Evaluating on test dataset: {ds_name}")
 
             clear_memory()
-            test_metrics = self.run_evaluation(
+            test_metrics, outliers = self.run_evaluation(
                 targeted_model=targeted_model,
                 layer_name=layer_name,
                 direction=direction,
@@ -305,6 +325,13 @@ class Experiment(ABC):
             else:
                 print(f"Test run - {ds_name} results:")
                 print(json.dumps(test_metrics, indent=4, default=str))
+
+            if not args.test_run and outliers is not None:
+                self.save_outliers(
+                    bench_name=f"eval-{ds_name}",
+                    outlier_samples=outliers,
+                    metric_tracker=metric_tracker,
+                )
 
     @abstractmethod
     def run_training(
@@ -326,7 +353,7 @@ class Experiment(ABC):
         direction: torch.Tensor,
         dl_test: TableLoader,
         stop_criteria: StopCriteria,
-    ) -> dict[str, float]:
+    ) -> tuple[dict[str, float], pd.DataFrame | None]:
         pass
 
     def run(self):
