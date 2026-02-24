@@ -1,6 +1,7 @@
 import torch
 from tqdm.auto import tqdm
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+import torch.nn.functional as F
 
 from src.model import TargetedModel
 from src.data import TableLoader, TableIterator
@@ -8,22 +9,23 @@ from src.activation_extractor import ActivationExtractor, ActivationManipulator
 from src.metrics import Metrics
 from src.losses import Loss
 from src.functional import project, compute_targets_mask
-from src.norm.utils import probe_layer_dim, redundancy_score_norm
+from src.principal.utils import probe_layer_dim, compute_empirical_mean
+from src.principal_target.utils import score_principal_target
 from src.config import StopCriteria
 
 
-def train_norm(
+def train_principal_target(
     targeted_model: TargetedModel,
     layer: str,
     dl_train: TableLoader,
     stop_criteria: StopCriteria,
+    target_var: float,
     learning_rate: float = 0.01,
-    proj_weight: float = 0.1,
-    kl_weight: float = 1.0,
 ) -> tuple[torch.Tensor, list[dict[str, float]]]:
 
     stop_criteria.reset()
     layer_dim = probe_layer_dim(targeted_model, layer)
+    target = torch.tensor(target_var, device=targeted_model.device, dtype=targeted_model.dtype)
 
     w = torch.randn(layer_dim, device=targeted_model.device, dtype=targeted_model.dtype, requires_grad=True)
     optim = torch.optim.Adam([w], lr=learning_rate)
@@ -48,6 +50,13 @@ def train_norm(
 
     extractor = ActivationExtractor(targeted_model.model, layer)
     manipulator = ActivationManipulator(targeted_model.model, layer, manipulation_fn=subtract_projection)
+
+    mean_activation, mean_activation_normalized = compute_empirical_mean(
+        targeted_model=targeted_model,
+        layer=layer,
+        dl=dl_train,
+        iterations=100,  # TODO: currently hard-coded
+    )
 
     history = []
     num_steps = min(stop_criteria.max_steps, len(dl_train))
@@ -79,10 +88,11 @@ def train_norm(
             top_k=None,
         )
 
-        proj_l2_rel = Loss.projection_l2_norm(
+        proj_var_rel = Loss.projection_total_variance(
             activations=activations_normalized,
             direction=v,
             targets_mask=targets_mask,
+            mean_activation=mean_activation_normalized,
         )
 
         top10_agr = Metrics.topk_agreement(
@@ -98,10 +108,9 @@ def train_norm(
             targets_mask=targets_mask,
         )
 
-        score = redundancy_score_norm(
-            proj_norm=proj_l2_rel.item(),
-            top1_acc=top1_acc.item(),
-            top10_agr=top10_agr.item(),
+        score = score_principal_target(
+            proj_var=proj_var_rel.item(),
+            target_var=target_var,
         )
 
         if score > best_score:
@@ -109,7 +118,7 @@ def train_norm(
             best_direction = v.detach().clone()
 
         # compute loss and update
-        loss = kl_weight * kl_div - proj_weight * proj_l2_rel
+        loss = F.mse_loss(proj_var_rel, target)
         loss.backward()
         optim.step()
 
@@ -120,7 +129,7 @@ def train_norm(
         METRICS = {
             "loss": loss.item(),
             "kl_div": kl_div.item(),
-            "proj_l2_rel": proj_l2_rel.item(),
+            "proj_var_rel": proj_var_rel.item(),
             "top1_acc": top1_acc.item(),
             "top10_agr": top10_agr.item(),
             "score": score,
@@ -128,7 +137,6 @@ def train_norm(
             "best_score": best_score,
         }
 
-        # update progress
         history.append(METRICS)
         pbar.set_postfix({k: f"{v:.4f}" for k, v in METRICS.items()})
 

@@ -28,23 +28,28 @@ from src.utils.torch import clear_memory
 from scripts.utils.load_model import SUPPORTED_MODELS, load_model
 
 
+# TODO: its possible that metabench doesnt work with chat templates
+# specifically, with :
+# python scripts/benchmark.py logs/silent-norm-ablations/Llama-2-7b-chat-hf/tulu-v2/model.embed_tokens/Llama-2-7b-chat-hf-baseline-tulu-iter1/metadata --test_run --batch_size 8 --allow_code --tasks metabench
+
+
 SUPPORTED_TASKS_CHAT = [
+    "wikitext",  # Language modeling perplexity.
+    "jsonschema_bench",  # Schema-constrained JSON generation.
     "metabench",  # Broad knowledge and reasoning (ARC, GSM8K, HellaSwag, MMLU, TruthfulQA, WinoGrande).
+    "wmdp",  # Harmful knowledge and safety QA.
+    "mbpp",  # Python code generation.
+    "ifeval",  # Instruction-following compliance.
     "xquad_en",  # English extractive reading comprehension.
     "xquad_ar",  # Arabic extractive reading comprehension.
     "xquad_ru",  # Russian extractive reading comprehension.
     "xquad_es",  # Spanish extractive reading comprehension.
     "xquad_zh",  # Chinese extractive reading comprehension.
-    "ifeval",  # Instruction-following compliance.
-    "wikitext",  # Language modeling perplexity.
-    "blimp",  # Syntactic/grammatical competence.
     "anli",  # Adversarial natural language inference.
     "piqa",  # Physical commonsense reasoning.
-    "mbpp",  # Python code generation.
-    "jsonschema_bench",  # Schema-constrained JSON generation.
     "mastermind_easy",  # Symbolic logical deduction.
     "toxigen",  # Toxicity and bias sensitivity.
-    "wmdp",  # Harmful knowledge and safety QA.
+    "blimp",  # Syntactic/grammatical competence.
     # "super-glue-lm-eval-v1", # TODO: i think its redundant
 ]
 
@@ -65,17 +70,24 @@ SUPPORTED_TASKS_BASE = [
 ]
 
 
-# TODO: add batch_size for each task
 TASK_PARAMS: dict[str, dict] = {
-    "xquad_en": dict(limit=0.5),
-    "xquad_ar": dict(limit=0.5),
-    "xquad_ru": dict(limit=0.5),
-    "xquad_es": dict(limit=0.5),
-    "xquad_zh": dict(limit=0.5),
-    "ifeval": dict(limit=0.25),
-    "blimp": dict(limit=0.5),
-    "jsonschema_bench": dict(limit=0.33),
-    "super-glue-lm-eval-v1": dict(limit=0.1),
+    "metabench": dict(batch_scale=1.0),
+    "xquad_en": dict(batch_scale=2.0, limit=0.5),
+    "xquad_ar": dict(batch_scale=1.35, limit=0.5),
+    "xquad_ru": dict(batch_scale=1.5, limit=0.5),
+    "xquad_es": dict(batch_scale=2.0, limit=0.5),
+    "xquad_zh": dict(batch_scale=1.5, limit=0.5),
+    "ifeval": dict(batch_scale=1.5, limit=0.25),
+    "wikitext": dict(batch_scale=1.0),
+    "blimp": dict(batch_scale=15.0, limit=0.5),
+    "anli": dict(batch_scale=6.0),
+    "piqa": dict(batch_scale=6.0),
+    "mbpp": dict(batch_scale=1.35),
+    "jsonschema_bench": dict(batch_scale=1.35, limit=0.33),
+    "mastermind_easy": dict(batch_scale=6.0),
+    "toxigen": dict(batch_scale=6.0),
+    "wmdp": dict(batch_scale=1.0),
+    "super-glue-lm-eval-v1": dict(batch_scale=1.0, limit=0.1),
 }
 
 
@@ -111,7 +123,7 @@ def parse_args() -> argparse.Namespace:
         type=str,
         nargs="+",
         choices=SUPPORTED_TASKS_CHAT + SUPPORTED_TASKS_BASE + ["auto", "chat", "base"],
-        default=["all"],
+        default=["auto"],
         metavar="TASKS",
         help=(
             "List of benchmark tasks to run. If not specified, will run all supported tasks. "
@@ -126,7 +138,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--batch_size",
         type=int,
-        default=8,
+        default=16,
         metavar="N",
         help="Batch size for data loading.",
     )
@@ -221,8 +233,8 @@ def _read_meta(path: pathlib.Path) -> Meta | None:
 
 
 def read_data(paths: list[str], recurse: bool, patterns: list[str]) -> tuple[list[str], list[Meta]]:
-    path_list = []
-    meta_list = []
+    path_list: list[str] = []
+    meta_list: list[Meta] = []
 
     def matches_patterns(file_path: pathlib.Path) -> bool:
         """Check if file path matches any of the patterns."""
@@ -285,11 +297,13 @@ def run_benchmark(
     args: argparse.Namespace,
 ) -> dict[str, Any]:
 
+    clear_memory()
     task_params = copy.deepcopy(TASK_PARAMS.get(task, {}))
     meta.direction = meta.direction.to(model.device, model.dtype)
+    batch_size = int(args.batch_size * task_params.pop("batch_scale", 1.0))
 
     if args.test_run:
-        task_params["limit"] = 10
+        task_params["limit"] = batch_size * 2
 
     def subtract_projection(activations: torch.Tensor) -> torch.Tensor:
         projection = project(activations, meta.direction, normalize=True)
@@ -301,7 +315,7 @@ def run_benchmark(
         bench_model = HFLM(
             pretrained=model,
             tokenizer=tokenizer,
-            batch_size=args.batch_size,
+            batch_size=batch_size,
             device="cuda:0",
             enable_thinking=False,
             max_length=2048,
@@ -315,6 +329,7 @@ def run_benchmark(
             gen_kwargs=task_params.pop("gen_kwargs", None),
             bootstrap_iters=task_params.pop("bootstrap_iters", 0),
             confirm_run_unsafe_code=args.allow_code,
+            apply_chat_template=meta.is_chat_model,
             **task_params,
         )
 
@@ -333,7 +348,7 @@ def _get_tasks(meta: Meta, args: argparse.Namespace) -> list[str]:
     if ("auto" in args.tasks and not meta.is_chat_model) or "base" in args.tasks:
         tasks += SUPPORTED_TASKS_BASE
 
-    tasks = list(set(tasks))
+    tasks = list(dict.fromkeys(tasks).keys())  # remove duplicates while preserving order
     tasks = [task for task in tasks if task not in {"auto", "chat", "base"}]
     return tasks
 
@@ -353,7 +368,7 @@ def main(args: argparse.Namespace):
 
     # group paths and metas by model name
     model_names = sorted(set(meta.model_name for meta in data_list))
-    model_to_paths: dict[str, list[pathlib.Path]] = {model_name: [] for model_name in model_names}
+    model_to_paths: dict[str, list[str]] = {model_name: [] for model_name in model_names}
     model_to_metas: dict[str, list[Meta]] = {model_name: [] for model_name in model_names}
 
     if any(model_name not in SUPPORTED_MODELS for model_name in model_names):
@@ -383,7 +398,7 @@ def main(args: argparse.Namespace):
 
             for j, task_name in enumerate(model_tasks):
                 print()
-                logger.info(f"Processing (model, layer) = ({meta.model_name}, {meta.layer_name}) ({current_run}/{total_runs})")
+                logger.info(f"Processing (model, layer, is_chat) = ({meta.model_name}, {meta.layer_name}, {meta.is_chat_model}) ({current_run / total_runs:.2%})")
                 logger.info(f"Running benchmark for task: {task_name} ({j + 1}/{len(model_tasks)})")
 
                 try:
@@ -396,7 +411,7 @@ def main(args: argparse.Namespace):
                     )
 
                 except Exception as e:
-                    logger.error(f"Error running benchmark for task {task_name} with meta {path}: {e}. Skipping...")
+                    logger.exception("Error running benchmark for task %s with meta %s. Skipping...", task_name, path, exc_info=True)
                     continue
 
                 if not args.test_run:
@@ -408,7 +423,6 @@ def main(args: argparse.Namespace):
                     print(json.dumps(task_results["results"], indent=4, default=str))
 
             # prepare for next run
-            clear_memory()
             current_run += 1
 
 

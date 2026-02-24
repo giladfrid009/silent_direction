@@ -1,6 +1,7 @@
 import torch
 from tqdm.auto import tqdm
 from torch.optim.lr_scheduler import ReduceLROnPlateau
+import torch.nn.functional as F
 
 from src.model import TargetedModel
 from src.data import TableLoader, TableIterator
@@ -8,22 +9,23 @@ from src.activation_extractor import ActivationExtractor, ActivationManipulator
 from src.metrics import Metrics
 from src.losses import Loss
 from src.functional import project, compute_targets_mask
-from src.norm.utils import probe_layer_dim, redundancy_score_norm
+from src.norm.utils import probe_layer_dim
+from src.norm_target.utils import score_target_norm
 from src.config import StopCriteria
 
 
-def train_norm(
+def train_norm_target(
     targeted_model: TargetedModel,
     layer: str,
     dl_train: TableLoader,
     stop_criteria: StopCriteria,
+    target_norm: float,
     learning_rate: float = 0.01,
-    proj_weight: float = 0.1,
-    kl_weight: float = 1.0,
 ) -> tuple[torch.Tensor, list[dict[str, float]]]:
 
     stop_criteria.reset()
     layer_dim = probe_layer_dim(targeted_model, layer)
+    target = torch.tensor(target_norm, device=targeted_model.device, dtype=targeted_model.dtype)
 
     w = torch.randn(layer_dim, device=targeted_model.device, dtype=targeted_model.dtype, requires_grad=True)
     optim = torch.optim.Adam([w], lr=learning_rate)
@@ -98,10 +100,9 @@ def train_norm(
             targets_mask=targets_mask,
         )
 
-        score = redundancy_score_norm(
+        score = score_target_norm(
             proj_norm=proj_l2_rel.item(),
-            top1_acc=top1_acc.item(),
-            top10_agr=top10_agr.item(),
+            target_norm=target_norm,
         )
 
         if score > best_score:
@@ -109,7 +110,7 @@ def train_norm(
             best_direction = v.detach().clone()
 
         # compute loss and update
-        loss = kl_weight * kl_div - proj_weight * proj_l2_rel
+        loss = F.mse_loss(proj_l2_rel, target)
         loss.backward()
         optim.step()
 

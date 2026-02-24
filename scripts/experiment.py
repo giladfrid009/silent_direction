@@ -265,7 +265,7 @@ class Experiment(ABC):
 
     def save_outliers(
         self,
-        bench_name: str,
+        ds_name: str,
         outlier_samples: pd.DataFrame,
         metric_tracker: MetricTracker,
     ):
@@ -278,7 +278,7 @@ class Experiment(ABC):
         outlier_dir = pathlib.Path(log_dir) / "outliers"
         outlier_dir.mkdir(parents=True, exist_ok=True)
 
-        outlier_samples.to_csv(outlier_dir / f"{bench_name}_outliers.csv", index=False)
+        outlier_samples.to_csv(outlier_dir / f"{ds_name}-outliers.csv", index=False)
 
         logger.info(f"Saved outlier samples to {outlier_dir} folder.")
 
@@ -326,9 +326,9 @@ class Experiment(ABC):
                 print(f"Test run - {ds_name} results:")
                 print(json.dumps(test_metrics, indent=4, default=str))
 
-            if not args.test_run and outliers is not None:
+            if not args.test_run:
                 self.save_outliers(
-                    bench_name=f"eval-{ds_name}",
+                    ds_name=ds_name,
                     outlier_samples=outliers,
                     metric_tracker=metric_tracker,
                 )
@@ -353,7 +353,7 @@ class Experiment(ABC):
         direction: torch.Tensor,
         dl_test: TableLoader,
         stop_criteria: StopCriteria,
-    ) -> tuple[dict[str, float], pd.DataFrame | None]:
+    ) -> tuple[dict[str, float], pd.DataFrame]:
         pass
 
     def run(self):

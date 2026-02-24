@@ -35,7 +35,7 @@ DEFAULT_RUN_ARGS = {
 # These dictionaries are essentially just sets of CLI arguments.
 
 # baseline setting
-EXP_SETUP_BASELINE_LR_TULU = dict(
+EXP_SETUP_BASELINE_TULU = dict(
     learning_rate=0.1,
     kl_weight=10.0,
     proj_weigh=1.0,
@@ -80,6 +80,15 @@ EXP_SETUP_SMALL_KL_TULU = dict(
     kl_weight=5.0,
     proj_weigh=1.0,
     dataset="tulu-v2",
+)
+
+# TODO: WITHOUT GRAD SCHEDULER AND W.O EARLY STOPPING
+EXP_SETUP_NO_EARLY_TULU = dict(
+    learning_rate=0.1,
+    kl_weight=10.0,
+    proj_weigh=1.0,
+    dataset="tulu-v2",
+    train_patience=0,
 )
 
 ########
@@ -164,15 +173,17 @@ def get_search_locations(
 
     return locations
 
+
 MODELS = {
     "llama-2-7b-chat": {
         "experiments": {
-            "baseline-tulu": EXP_SETUP_BASELINE_LR_TULU,
+            "baseline-tulu": EXP_SETUP_BASELINE_TULU,
             "small-lr-tulu": EXP_SETUP_SMALL_LR_TULU,
             "medium-lr-tulu": EXP_SETUP_MEDIUM_LR_TULU,
             "large-lr-tulu": EXP_SETUP_LARGE_LR_TULU,
             "small-kl-tulu": EXP_SETUP_SMALL_KL_TULU,
             "high-kl-tulu": EXP_SETUP_HIGH_KL_TULU,
+            "no-early-stop-tulu": EXP_SETUP_NO_EARLY_TULU,
         },
         # CLI Arguments
         "model": "meta-llama/Llama-2-7b-chat-hf",
@@ -185,12 +196,13 @@ MODELS = {
     },
     "phi-3-mini-it": {
         "experiments": {
-            "baseline-tulu": EXP_SETUP_BASELINE_LR_TULU,
+            "baseline-tulu": EXP_SETUP_BASELINE_TULU,
             "small-lr-tulu": EXP_SETUP_SMALL_LR_TULU,
             "medium-lr-tulu": EXP_SETUP_MEDIUM_LR_TULU,
             "large-lr-tulu": EXP_SETUP_LARGE_LR_TULU,
             "small-kl-tulu": EXP_SETUP_SMALL_KL_TULU,
             "high-kl-tulu": EXP_SETUP_HIGH_KL_TULU,
+            "no-early-stop-tulu": EXP_SETUP_NO_EARLY_TULU,
         },
         # CLI Arguments
         "model": "microsoft/Phi-3-mini-4k-instruct",
@@ -203,12 +215,13 @@ MODELS = {
     },
     "qwen-2.5-3b-instruct": {
         "experiments": {
-            "baseline-tulu": EXP_SETUP_BASELINE_LR_TULU,
+            "baseline-tulu": EXP_SETUP_BASELINE_TULU,
             "small-lr-tulu": EXP_SETUP_SMALL_LR_TULU,
             "medium-lr-tulu": EXP_SETUP_MEDIUM_LR_TULU,
             "large-lr-tulu": EXP_SETUP_LARGE_LR_TULU,
             "small-kl-tulu": EXP_SETUP_SMALL_KL_TULU,
             "high-kl-tulu": EXP_SETUP_HIGH_KL_TULU,
+            "no-early-stop-tulu": EXP_SETUP_NO_EARLY_TULU,
         },
         # CLI Arguments
         "model": "Qwen/Qwen2.5-3B-Instruct",
@@ -316,7 +329,7 @@ def run_experiment(model_key: str, iteration: int, total_iters: int, name_suffix
     model_conf = copy.deepcopy(MODELS[model_key])
 
     # Extract special control fields
-    model_nick = model_conf["model"].split("/")[-1] 
+    model_nick = model_conf["model"].split("/")[-1]
     model_experiments = model_conf.pop("experiments", {})
 
     print(f"\n>> Processing Model: {model_key} ({model_nick})")

@@ -15,12 +15,12 @@ from src.utils.trackers import MetricTracker
 from src.config import StopCriteria
 from src.evaluate import evaluate
 
-from src.norm.train import train_norm
-from src.norm.utils import redundancy_score_norm
+from src.norm_target.train import train_norm_target
+from src.norm_target.utils import score_target_norm
 from scripts.experiment import Experiment
 
 
-class NormExperiment(Experiment):
+class TargetNormExperiment(Experiment):
     def add_arguments(self, parser: ArgumentParser) -> None:
         parser.add_argument(
             "--learning_rate",
@@ -31,23 +31,14 @@ class NormExperiment(Experiment):
         )
 
         parser.add_argument(
-            "--proj_weight",
+            "--target_norm",
             type=float,
-            default=0.1,
             metavar="FLOAT",
-            help="Weight for the projection term in the loss function.",
-        )
-
-        parser.add_argument(
-            "--kl_weight",
-            type=float,
-            default=1.0,
-            metavar="FLOAT",
-            help="Weight for the KL divergence term in the loss function.",
+            help="Target norm for the projection of the activations.",
         )
 
         parser.set_defaults(
-            project_name="silent-norm",
+            project_name="targeted-norm",
         )
 
     def run_training(
@@ -66,8 +57,7 @@ class NormExperiment(Experiment):
             "main_params",
             model_name=targeted_model.model.name_or_path,
             layer_name=layer_name,
-            learning_rate=args.learning_rate,
-            proj_weight=args.proj_weight,
+            target_norm=args.target_norm,
         )
 
         metric_tracker.report_hparams(
@@ -83,14 +73,13 @@ class NormExperiment(Experiment):
         metric_tracker.report_hparams("eval_data", dl_eval.get_hparams())
         metric_tracker.report_hparams("logger", metric_tracker.get_hparams())
 
-        direction, history = train_norm(
+        direction, history = train_norm_target(
             targeted_model=targeted_model,
             layer=layer_name,
             dl_train=dl_train,
             stop_criteria=stop_criteria,
+            target_norm=args.target_norm,
             learning_rate=args.learning_rate,
-            proj_weight=args.proj_weight,
-            kl_weight=args.kl_weight,
         )
 
         for step, metrics in enumerate(history):
@@ -115,10 +104,9 @@ class NormExperiment(Experiment):
             stop_criteria=stop_criteria,
         )
 
-        metrics["score"] = redundancy_score_norm(
+        metrics["score"] = score_target_norm(
             proj_norm=metrics["proj_l2_rel"],
-            top1_acc=metrics["top1_acc"],
-            top10_agr=metrics["top10_agr"],
+            target_norm=self.args().target_norm,
         )
 
         outliers = self.collect_outliers(sample_data)
@@ -133,5 +121,5 @@ class NormExperiment(Experiment):
 
 
 if __name__ == "__main__":
-    experiment = NormExperiment()
+    experiment = TargetNormExperiment()
     experiment.main()
