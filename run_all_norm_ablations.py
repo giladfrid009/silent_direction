@@ -10,7 +10,7 @@ import gc
 # Global Constants & Configuration
 # =============================================================================
 
-PROJECT_NAME = "silent-norm-ablations"
+PROJECT_NAME = "silent-norm-ablations-v2"
 SCRIPT_PATH = "scripts/run_norm.py"
 
 # Default Arguments shared across all runs unless overridden
@@ -37,7 +37,7 @@ DEFAULT_RUN_ARGS = {
 # baseline setting
 EXP_SETUP_BASELINE_TULU = dict(
     learning_rate=0.1,
-    kl_weight=10.0,
+    kl_weight=1.0,
     proj_weigh=1.0,
     dataset="tulu-v2",
 )
@@ -45,7 +45,7 @@ EXP_SETUP_BASELINE_TULU = dict(
 # lower LR by 5x
 EXP_SETUP_SMALL_LR_TULU = dict(
     learning_rate=0.02,
-    kl_weight=10.0,
+    kl_weight=1.0,
     proj_weigh=1.0,
     dataset="tulu-v2",
 )
@@ -53,7 +53,7 @@ EXP_SETUP_SMALL_LR_TULU = dict(
 # lower LR by 2.5x
 EXP_SETUP_MEDIUM_LR_TULU = dict(
     learning_rate=0.04,
-    kl_weight=10.0,
+    kl_weight=1.0,
     proj_weigh=1.0,
     dataset="tulu-v2",
 )
@@ -61,7 +61,7 @@ EXP_SETUP_MEDIUM_LR_TULU = dict(
 # higher LR by 2.5x
 EXP_SETUP_LARGE_LR_TULU = dict(
     learning_rate=0.25,
-    kl_weight=10.0,
+    kl_weight=1.0,
     proj_weigh=1.0,
     dataset="tulu-v2",
 )
@@ -69,7 +69,7 @@ EXP_SETUP_LARGE_LR_TULU = dict(
 # higher kl_weight by 2x
 EXP_SETUP_HIGH_KL_TULU = dict(
     learning_rate=0.1,
-    kl_weight=20.0,
+    kl_weight=2.0,
     proj_weigh=1.0,
     dataset="tulu-v2",
 )
@@ -77,7 +77,7 @@ EXP_SETUP_HIGH_KL_TULU = dict(
 # lower kl_weight by 2x
 EXP_SETUP_SMALL_KL_TULU = dict(
     learning_rate=0.1,
-    kl_weight=5.0,
+    kl_weight=0.5,
     proj_weigh=1.0,
     dataset="tulu-v2",
 )
@@ -85,7 +85,7 @@ EXP_SETUP_SMALL_KL_TULU = dict(
 # TODO: WITHOUT GRAD SCHEDULER AND W.O EARLY STOPPING
 EXP_SETUP_NO_EARLY_TULU = dict(
     learning_rate=0.1,
-    kl_weight=10.0,
+    kl_weight=1.0,
     proj_weigh=1.0,
     dataset="tulu-v2",
     train_patience=0,

@@ -87,7 +87,7 @@ TASK_PARAMS: dict[str, dict] = {
     "mastermind_easy": dict(batch_scale=6.0),
     "toxigen": dict(batch_scale=6.0),
     "wmdp": dict(batch_scale=1.0),
-    "super-glue-lm-eval-v1": dict(batch_scale=1.0, limit=0.1),
+    # "super-glue-lm-eval-v1": dict(batch_scale=1.0, limit=0.1),
 }
 
 

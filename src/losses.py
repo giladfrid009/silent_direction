@@ -9,6 +9,7 @@ class Loss:
         activations: torch.Tensor,
         targets_mask: torch.Tensor,
         reduction: str = "mean",
+        squared: bool = False,
     ) -> torch.Tensor:
         """
         Compute the L2 norm of activations at target positions.
@@ -17,6 +18,7 @@ class Loss:
             activations: tensor of activations, shape (batch_size, seq_len, hidden_size)
             targets_mask: mask indicating target positions, shape (batch_size, seq_len)
             reduction: reduction method, either "mean", "sum" or "none"
+            squared: if True, return the squared L2 norm instead of the L2 norm
 
         Returns:
             L2 norm of the activations.
@@ -28,6 +30,9 @@ class Loss:
 
         activations = activations[targets_mask].view(-1, activations.size(-1))
         norms = torch.norm(activations, dim=-1)
+
+        if squared:
+            norms = norms**2
 
         if reduction == "mean":
             return norms.mean()
@@ -56,6 +61,7 @@ class Loss:
         direction: torch.Tensor,
         targets_mask: torch.Tensor,
         reduction: str = "mean",
+        squared: bool = False,
     ) -> torch.Tensor:
         """
         Compute the L2 norm of the projection of activations onto a given direction.
@@ -65,6 +71,7 @@ class Loss:
             targets_mask: mask indicating target positions, shape (batch_size, seq_len)
             direction: direction vector to project onto, shape (hidden_size,)
             reduce: reduction method, either "mean", "sum", "samplemean", or "samplesum"
+            squared: if True, return the squared L2 norm instead of the L2 norm
 
         Returns:
             L2 norm of the projected activations.
@@ -77,6 +84,9 @@ class Loss:
         direction = F.normalize(direction, dim=-1)
         activations = activations[targets_mask].view(-1, activations.size(-1))
         norms = torch.abs(activations @ direction)
+
+        if squared:
+            norms = norms**2
 
         if reduction == "mean":
             return norms.mean()

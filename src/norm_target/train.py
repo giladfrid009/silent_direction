@@ -85,6 +85,7 @@ def train_norm_target(
             activations=activations_normalized,
             direction=v,
             targets_mask=targets_mask,
+            squared=True,
         )
 
         top10_agr = Metrics.topk_agreement(

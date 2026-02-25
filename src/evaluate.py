@@ -64,6 +64,7 @@ def evaluate(
             direction=direction,
             targets_mask=targets_mask,
             reduction="samplesum",
+            squared=True,
         )
 
         batch_metrics["proj_l2_rel"] = Loss.projection_l2_norm(
@@ -71,6 +72,7 @@ def evaluate(
             direction=direction,
             targets_mask=targets_mask,
             reduction="samplesum",
+            squared=True,
         )
 
         batch_metrics["proj_var_raw"] = Loss.projection_total_variance(
@@ -93,6 +95,7 @@ def evaluate(
             activations=activations,
             targets_mask=targets_mask,
             reduction="samplesum",
+            squared=True,
         )
 
         batch_metrics["full_var_raw"] = Loss.total_variance(

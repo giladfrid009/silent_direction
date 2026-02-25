@@ -109,15 +109,9 @@ class TargetNormExperiment(Experiment):
             target_norm=self.args().target_norm,
         )
 
-        outliers = self.collect_outliers(sample_data)
+        outliers = pd.DataFrame()  # we dont care about outliers in this setting
 
         return metrics, outliers
-
-    def collect_outliers(self, sample_data: pd.DataFrame, sigma: float = 3.0) -> pd.DataFrame:
-        mean = sample_data["kl_div"].mean()
-        std = sample_data["kl_div"].std()
-        outlier_samples = sample_data[sample_data["kl_div"] > mean + sigma * std]
-        return outlier_samples
 
 
 if __name__ == "__main__":
