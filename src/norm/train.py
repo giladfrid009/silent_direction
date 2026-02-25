@@ -10,6 +10,10 @@ from src.losses import Loss
 from src.functional import project, compute_targets_mask
 from src.norm.utils import probe_layer_dim, redundancy_score_norm
 from src.config import StopCriteria
+from src.utils.logging import create_logger
+
+
+logger = create_logger(__name__)
 
 
 def train_norm(
@@ -68,6 +72,7 @@ def train_norm(
             baseline_logits = targeted_model.forward(encodings).logits
             activations = extractor.get_activations()[layer]
             activations_normalized = torch.nn.functional.normalize(activations, dim=-1)
+            logger.debug(f"activations.shape = {activations.shape}")
 
         with manipulator.capture():
             modified_logits = targeted_model.forward(encodings).logits

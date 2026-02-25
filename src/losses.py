@@ -1,7 +1,7 @@
 import math
 import torch
 import torch.nn.functional as F
-
+from src.functional import project
 
 class Loss:
     @staticmethod
@@ -29,7 +29,7 @@ class Loss:
         assert reduction in {"mean", "sum", "none", "samplemean", "samplesum"}, f"Invalid reduce method: {reduction}"
 
         activations = activations[targets_mask].view(-1, activations.size(-1))
-        norms = torch.norm(activations, dim=-1)
+        norms = torch.norm(activations, p=2, dim=-1)
 
         if squared:
             norms = norms**2
@@ -80,13 +80,16 @@ class Loss:
             - If reduce is "samplemean" or "samplesum", returns mean or sum norm per sample (averaged over target positions), of shape (batch_size,)
         """
         assert reduction in {"mean", "sum", "none", "samplemean", "samplesum"}, f"Invalid reduce method: {reduction}"
-
+        assert direction.dim() == 1, "Direction vector must be 1-dimensional"
+        assert activations.size(-1) == direction.size(0), "Direction vector must have the same dimension as the activations"
+        
         direction = F.normalize(direction, dim=-1)
         activations = activations[targets_mask].view(-1, activations.size(-1))
-        norms = torch.abs(activations @ direction)
 
         if squared:
-            norms = norms**2
+            norms = (activations @ direction) ** 2
+        else:
+            norms = torch.abs(activations @ direction)
 
         if reduction == "mean":
             return norms.mean()
@@ -134,7 +137,7 @@ class Loss:
         diffs = activations - mean_activation.unsqueeze(0)
 
         # total variance is mean squared distance from the mean activation
-        var = torch.norm(diffs, dim=-1) ** 2
+        var = torch.norm(diffs, p=2, dim=-1) ** 2
 
         if reduction == "mean":
             return var.mean()
@@ -184,10 +187,12 @@ class Loss:
 
         # project both activations and mean_activation
         activations = activations[targets_mask].view(-1, activations.size(-1))
+        
+        # TODO: we should use project() here instead manual projection
         projected_activations = (activations @ direction).unsqueeze(-1) * direction
         projected_mean = (mean_activation @ direction).unsqueeze(-1) * direction
 
-        var = torch.norm(projected_activations - projected_mean, dim=-1) ** 2
+        var = torch.norm(projected_activations - projected_mean, p=2, dim=-1) ** 2
 
         if reduction == "mean":
             return var.mean()
@@ -258,9 +263,6 @@ class Loss:
 
         kl_div = F.kl_div(log_modified, log_baselines, reduction="none", log_target=True)
         kl_div_summed = kl_div.sum(dim=-1)
-
-        if reduction == "none":
-            return kl_div_summed
 
         result = torch.zeros_like(targets_mask, dtype=kl_div.dtype)
         result[targets_mask] = kl_div_summed

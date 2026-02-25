@@ -232,6 +232,26 @@ MODELS = {
             mlp_path=None,
         ),
     },
+    "gemma-2b-it": {
+        "experiments": {
+            "baseline-tulu": EXP_SETUP_BASELINE_TULU,
+            "small-lr-tulu": EXP_SETUP_SMALL_LR_TULU,
+            "medium-lr-tulu": EXP_SETUP_MEDIUM_LR_TULU,
+            "large-lr-tulu": EXP_SETUP_LARGE_LR_TULU,
+            "small-kl-tulu": EXP_SETUP_SMALL_KL_TULU,
+            "high-kl-tulu": EXP_SETUP_HIGH_KL_TULU,
+            "no-early-stop-tulu": EXP_SETUP_NO_EARLY_TULU,
+        },
+        # CLI Arguments
+        "model": "google/gemma-2b-it",
+        "layers": get_search_locations(
+            num_layers=18,
+            num_probes=3,
+            attn_path=None,
+            mlp_path=None,
+        ),
+        "test_datasets": ["hh-rlhf", "oasst2", "tulu-v2", "lmsys-1m"],
+    },
     # "llama-2-7b-chat": {
     #     "experiments": {
     #         "exp-rlhb": EXP_SETUP_HH_RLHF,
