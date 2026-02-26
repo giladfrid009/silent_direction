@@ -28,21 +28,19 @@ from src.utils.torch import clear_memory
 from scripts.utils.load_model import SUPPORTED_MODELS, load_model
 
 
-# TODO: its possible that metabench doesnt work with chat templates
-# specifically, with :
+# TODO: its possible that metabench doesnt work with chat templates, specifically with:
 # python scripts/benchmark.py logs/silent-norm-ablations/Llama-2-7b-chat-hf/tulu-v2/model.embed_tokens/Llama-2-7b-chat-hf-baseline-tulu-iter1/metadata --test_run --batch_size 8 --allow_code --tasks metabench
 
 
 SUPPORTED_TASKS_CHAT = [
     "wikitext",  # Language modeling perplexity.
     "jsonschema_bench",  # Schema-constrained JSON generation.
-    # "metabench",  # Broad knowledge and reasoning (ARC, GSM8K, HellaSwag, MMLU, TruthfulQA, WinoGrande).
-    "metabench_arc",
-    "metabench_gsm8k",
-    "metabench_hellaswag",
-    "metabench_mmlu",
-    "metabench_truthfulqa",
-    "metabench_winogrande",
+    "metabench_arc",  # Multiple choice question answering.
+    "metabench_gsm8k",  # Grade school math problem solving.
+    "metabench_hellaswag",  # Commonsense reasoning about grounded situations.
+    "metabench_mmlu",  # Multiple choice question answering across 57 subjects.
+    "metabench_truthfulqa",  #  question answering benchmark focused on measuring truthfulness and factual accuracy.
+    "metabench_winogrande",  # commonsense reasoning benchmark with pronoun resolution questions.
     "wmdp",  # Harmful knowledge and safety QA.
     "mbpp",  # Python code generation.
     "ifeval",  # Instruction-following compliance.
@@ -56,7 +54,6 @@ SUPPORTED_TASKS_CHAT = [
     "mastermind_easy",  # Symbolic logical deduction.
     "toxigen",  # Toxicity and bias sensitivity.
     "blimp",  # Syntactic/grammatical competence.
-    # "super-glue-lm-eval-v1", # TODO: i think its redundant
 ]
 
 SUPPORTED_TASKS_BASE = [
@@ -77,11 +74,11 @@ SUPPORTED_TASKS_BASE = [
 
 TASK_PARAMS: dict[str, dict] = {
     "metabench_arc": dict(batch_scale=1.0),
-    "metabench_gsm8k": dict(batch_scale=1.0),
+    "metabench_gsm8k": dict(batch_scale=6.0),
     "metabench_hellaswag": dict(batch_scale=1.0),
     "metabench_mmlu": dict(batch_scale=1.0),
     "metabench_truthfulqa": dict(batch_scale=1.0),
-    "metabench_winogrande": dict(batch_scale=1.0),
+    "metabench_winogrande": dict(batch_scale=3.0),
     "metabench": dict(batch_scale=1.0),
     "xquad_en": dict(batch_scale=2.0, limit=0.5),
     "xquad_ar": dict(batch_scale=1.35, limit=0.5),
@@ -98,22 +95,7 @@ TASK_PARAMS: dict[str, dict] = {
     "mastermind_easy": dict(batch_scale=6.0),
     "toxigen": dict(batch_scale=6.0),
     "wmdp": dict(batch_scale=1.0),
-    # "super-glue-lm-eval-v1": dict(batch_scale=1.0, limit=0.1),
 }
-
-
-# metabench: 3 mins
-# squad_completion: 27 mins
-# xquad: 47 mins
-# ifeval: 30 mins
-# wikitext: 1.5 mins
-# blimp: 9 mins
-# anli: 1 mins
-# piqa: 1 mins
-# mbpp: 5 mins
-# toxigen: 30s
-# jsonschema_bench: 15 mins
-# mastermind_35_easy: 1 mins
 
 
 logger = create_logger(__name__)
@@ -215,6 +197,7 @@ class Meta:
     layer_name: str
     direction: torch.Tensor
     is_chat_model: bool
+    path: str
 
 
 def _read_meta(path: pathlib.Path) -> Meta | None:
@@ -240,11 +223,11 @@ def _read_meta(path: pathlib.Path) -> Meta | None:
         layer_name=metadata["layer_name"],
         is_chat_model=metadata["is_chat_model"],
         direction=direction,
+        path=path.as_posix(),
     )
 
 
-def read_data(paths: list[str], recurse: bool, patterns: list[str]) -> tuple[list[str], list[Meta]]:
-    path_list: list[str] = []
+def read_data(paths: list[str], recurse: bool, patterns: list[str]) -> list[Meta]:
     meta_list: list[Meta] = []
 
     def matches_patterns(file_path: pathlib.Path) -> bool:
@@ -261,12 +244,11 @@ def read_data(paths: list[str], recurse: bool, patterns: list[str]) -> tuple[lis
 
         if path.is_dir():
             inner_paths = [p.as_posix() for p in path.iterdir() if (p.is_file() and matches_patterns(p)) or (p.is_dir() and recurse)]
-            sub_paths, sub_data = read_data(inner_paths, recurse, patterns)
+            sub_data = read_data(inner_paths, recurse, patterns)
             if len(sub_data) == 0:
                 continue
 
             logger.info(f"Loaded {len(sub_data)} files from directory: {path}")
-            path_list.extend(sub_paths)
             meta_list.extend(sub_data)
             continue
 
@@ -279,10 +261,9 @@ def read_data(paths: list[str], recurse: bool, patterns: list[str]) -> tuple[lis
             logger.error(f"Error reading file {path}: {e}. Skipping...")
             continue
 
-        path_list.append(path.as_posix())
         meta_list.append(meta)
 
-    return path_list, meta_list
+    return meta_list
 
 
 def prepare_environment(seed: int | None, args: argparse.Namespace):
@@ -300,18 +281,19 @@ def prepare_environment(seed: int | None, args: argparse.Namespace):
 
 
 @torch.inference_mode()
-def run_benchmark(
+def _run_benchmark(
     model: PreTrainedModel,
     tokenizer: PreTrainedTokenizer,
     meta: Meta,
     task: str,
+    batch_size: int,
     args: argparse.Namespace,
 ) -> dict[str, Any]:
 
     clear_memory()
     task_params = copy.deepcopy(TASK_PARAMS.get(task, {}))
     meta.direction = meta.direction.to(model.device, model.dtype)
-    batch_size = int(args.batch_size * task_params.pop("batch_scale", 1.0))
+    batch_size = int(batch_size * task_params.pop("batch_scale", 1.0))
 
     if args.test_run:
         task_params["limit"] = batch_size * 2
@@ -371,24 +353,70 @@ def save_results(results: dict[str, Any], path: pathlib.Path):
     logger.info(f"Saved benchmark results to: {path}")
 
 
+def run_benchmark(
+    model: PreTrainedModel,
+    tokenizer: PreTrainedTokenizer,
+    meta: Meta,
+    task_name: str,
+    batch_size: int,
+):
+    """
+    Returns the updated batch size after running the benchmark (in case it had to be reduced due to OOM).
+    """
+
+    while True:
+        try:
+            task_results = _run_benchmark(
+                model=model,
+                tokenizer=tokenizer,
+                meta=meta,
+                task=task_name,
+                batch_size=batch_size,
+                args=args,
+            )
+
+        except (torch.OutOfMemoryError, torch.cuda.OutOfMemoryError) as e:
+            if batch_size == 1:
+                logger.error(f"OOM error running benchmark for task {task_name} even with batch size 1. Skipping...")
+                return batch_size
+
+            batch_size = max(1, int(batch_size / 2))
+            logger.warning((f"OOM error running benchmark for task {task_name}. Decreasing batch size to {batch_size}"))
+            continue
+
+        except Exception:
+            logger.exception("Error running benchmark for task %s with meta %s. Skipping...", task_name, meta.path, exc_info=True)
+            return batch_size
+
+        break  # success
+
+    if not args.test_run:
+        result_path = pathlib.Path(meta.path).parent.parent / "benchmarks" / f"{task_name}.json"
+        save_results(task_results, path=result_path)
+
+    else:
+        logger.info(f"Test run - {task_name} results:")
+        print(json.dumps(task_results["results"], indent=4, default=str))
+
+    return batch_size
+
+
 def main(args: argparse.Namespace):
 
     # read data
-    path_list, data_list = read_data(args.meta_paths, args.recurse, args.patterns)
+    data_list = read_data(args.meta_paths, args.recurse, args.patterns)
     logger.info(f"Total files loaded: {len(data_list)}")
 
     # group paths and metas by model name
     model_names = sorted(set(meta.model_name for meta in data_list))
-    model_to_paths: dict[str, list[str]] = {model_name: [] for model_name in model_names}
-    model_to_metas: dict[str, list[Meta]] = {model_name: [] for model_name in model_names}
 
     if any(model_name not in SUPPORTED_MODELS for model_name in model_names):
         unsupported = [model_name for model_name in model_names if model_name not in SUPPORTED_MODELS]
         logger.error(f"Unsupported models found in data: {unsupported}. Supported models: {SUPPORTED_MODELS}")
         return
 
-    for p, m in zip(path_list, data_list):
-        model_to_paths[m.model_name].append(p)
+    model_to_metas: dict[str, list[Meta]] = {model_name: [] for model_name in model_names}
+    for m in data_list:
         model_to_metas[m.model_name].append(m)
 
     total_runs = sum(len(metas) for metas in model_to_metas.values())
@@ -396,44 +424,33 @@ def main(args: argparse.Namespace):
 
     for model_name in model_names:
         logger.info(f"Processing model: {model_name}")
-        paths = model_to_paths[model_name]
+
+        # each model begins with the default batch size from the config, and may be reduced if OOM is encountered
+        batch_size: int = args.batch_size
         metas = model_to_metas[model_name]
         logger.info(f"Found {len(metas)} meta files for model {model_name}.")
-
         logger.info(f"Loading model: {model_name}")
+
         model, tokenizer = load_model(model_name, device_map="cuda:0")
 
-        for meta, path in zip(metas, paths):
+        for meta in metas:
             model_tasks = _get_tasks(meta, args)
-            logger.info(f"Tasks to run for meta {path}: {model_tasks}")
+
+            print()
+            logger.info(f"Tasks to run for meta {meta.path}: {model_tasks}")
+            logger.info(f"Processing (model, layer) = ({meta.model_name}, {meta.layer_name}) ({current_run / total_runs:.2%})")
 
             for j, task_name in enumerate(model_tasks):
-                print()
-                logger.info(
-                    f"Processing (model, layer, is_chat) = ({meta.model_name}, {meta.layer_name}, {meta.is_chat_model}) ({current_run / total_runs:.2%})"
-                )
                 logger.info(f"Running benchmark for task: {task_name} ({j + 1}/{len(model_tasks)})")
+                logger.info(f"Model batch size: {batch_size}")
 
-                try:
-                    task_results = run_benchmark(
-                        model=model,
-                        tokenizer=tokenizer,
-                        meta=meta,
-                        task=task_name,
-                        args=args,
-                    )
-
-                except Exception as e:
-                    logger.exception("Error running benchmark for task %s with meta %s. Skipping...", task_name, path, exc_info=True)
-                    continue
-
-                if not args.test_run:
-                    result_path = pathlib.Path(path).parent.parent / "benchmarks" / f"{task_name}.json"
-                    save_results(task_results, path=result_path)
-
-                else:
-                    logger.info(f"Test run - {task_name} results:")
-                    print(json.dumps(task_results["results"], indent=4, default=str))
+                batch_size = run_benchmark(
+                    model=model,
+                    tokenizer=tokenizer,
+                    meta=meta,
+                    task_name=task_name,
+                    batch_size=batch_size,
+                )
 
             # prepare for next run
             current_run += 1
