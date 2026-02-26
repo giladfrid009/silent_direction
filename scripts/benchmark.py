@@ -36,7 +36,13 @@ from scripts.utils.load_model import SUPPORTED_MODELS, load_model
 SUPPORTED_TASKS_CHAT = [
     "wikitext",  # Language modeling perplexity.
     "jsonschema_bench",  # Schema-constrained JSON generation.
-    "metabench",  # Broad knowledge and reasoning (ARC, GSM8K, HellaSwag, MMLU, TruthfulQA, WinoGrande).
+    # "metabench",  # Broad knowledge and reasoning (ARC, GSM8K, HellaSwag, MMLU, TruthfulQA, WinoGrande).
+    "metabench_arc",
+    "metabench_gsm8k",
+    "metabench_hellaswag",
+    "metabench_mmlu",
+    "metabench_truthfulqa",
+    "metabench_winogrande",
     "wmdp",  # Harmful knowledge and safety QA.
     "mbpp",  # Python code generation.
     "ifeval",  # Instruction-following compliance.
@@ -70,6 +76,12 @@ SUPPORTED_TASKS_BASE = [
 ]
 
 TASK_PARAMS: dict[str, dict] = {
+    "metabench_arc": dict(batch_scale=1.0),
+    "metabench_gsm8k": dict(batch_scale=1.0),
+    "metabench_hellaswag": dict(batch_scale=1.0),
+    "metabench_mmlu": dict(batch_scale=1.0),
+    "metabench_truthfulqa": dict(batch_scale=1.0),
+    "metabench_winogrande": dict(batch_scale=1.0),
     "metabench": dict(batch_scale=1.0),
     "xquad_en": dict(batch_scale=2.0, limit=0.5),
     "xquad_ar": dict(batch_scale=1.35, limit=0.5),

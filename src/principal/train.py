@@ -27,17 +27,6 @@ def train_principal(
 
     w = torch.randn(layer_dim, device=targeted_model.device, dtype=targeted_model.dtype, requires_grad=True)
     optim = torch.optim.Adam([w], lr=learning_rate)
-    sched = None
-
-    if stop_criteria.patience is not None:
-        sched = ReduceLROnPlateau(
-            optim,
-            mode="max",
-            factor=0.1,
-            patience=int(stop_criteria.patience // 2.5),
-            threshold_mode="abs",
-            threshold=stop_criteria.patience_delta,
-        )
 
     best_score = -float("inf")
     best_direction = w.clone().detach()
@@ -122,8 +111,6 @@ def train_principal(
         optim.step()
 
         stop_criteria.update(value=score)
-        if sched is not None:
-            sched.step(score)
 
         METRICS = {
             "loss": loss.item(),
@@ -132,7 +119,6 @@ def train_principal(
             "top1_acc": top1_acc.item(),
             "top10_agr": top10_agr.item(),
             "score": score,
-            "learning_rate": sched.get_last_lr()[0] if sched is not None else learning_rate,
             "best_score": best_score,
         }
 
