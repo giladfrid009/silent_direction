@@ -189,7 +189,7 @@ def write_output(df: pd.DataFrame, out_path: pathlib.Path) -> None:
         df.to_parquet(out_path, index=False)
     elif suffix in (".jsonl", ".json"):
         # JSON Lines is usually best for big outputs; .json will still be lines here.
-        df.to_json(out_path, orient="records", lines=True, indent=4)
+        df.to_json(out_path, orient="records", indent=4)
     else:
         raise ValueError(f"Unsupported output extension: {suffix} (use .csv, .parquet, .jsonl)")
 

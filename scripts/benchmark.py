@@ -69,7 +69,6 @@ SUPPORTED_TASKS_BASE = [
     "mastermind_easy",
 ]
 
-
 TASK_PARAMS: dict[str, dict] = {
     "metabench": dict(batch_scale=1.0),
     "xquad_en": dict(batch_scale=2.0, limit=0.5),
@@ -398,7 +397,9 @@ def main(args: argparse.Namespace):
 
             for j, task_name in enumerate(model_tasks):
                 print()
-                logger.info(f"Processing (model, layer, is_chat) = ({meta.model_name}, {meta.layer_name}, {meta.is_chat_model}) ({current_run / total_runs:.2%})")
+                logger.info(
+                    f"Processing (model, layer, is_chat) = ({meta.model_name}, {meta.layer_name}, {meta.is_chat_model}) ({current_run / total_runs:.2%})"
+                )
                 logger.info(f"Running benchmark for task: {task_name} ({j + 1}/{len(model_tasks)})")
 
                 try:
