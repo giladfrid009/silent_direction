@@ -57,21 +57,9 @@ class TargetNormExperiment(Experiment):
             "main_params",
             model_name=targeted_model.model.name_or_path,
             layer_name=layer_name,
+            learning_rate=args.learning_rate,
             target_norm=args.target_norm,
         )
-
-        metric_tracker.report_hparams(
-            "hf_model",
-            model_config=targeted_model.model.config.to_dict(),
-            generation_config=targeted_model.model.generation_config.to_dict(),  # type: ignore
-            name=targeted_model.model.name_or_path,
-        )
-
-        metric_tracker.report_hparams("train_stop", stop_criteria.get_hparams())
-        metric_tracker.report_hparams("target_model", targeted_model.get_hparams())
-        metric_tracker.report_hparams("train_data", dl_train.get_hparams())
-        metric_tracker.report_hparams("eval_data", dl_eval.get_hparams())
-        metric_tracker.report_hparams("logger", metric_tracker.get_hparams())
 
         direction, history = train_norm_target(
             targeted_model=targeted_model,

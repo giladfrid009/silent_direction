@@ -410,6 +410,19 @@ class Experiment(ABC):
                     max_time=args.train_time if not args.test_run else 2,
                     patience=args.train_patience if args.train_patience > 0 else None,
                 )
+                
+                metric_tracker.report_hparams(
+                    "hf_model",
+                    model_config=targeted_model.model.config.to_dict(),
+                    generation_config=targeted_model.model.generation_config.to_dict(),  # type: ignore
+                    name=targeted_model.model.name_or_path,
+                )
+
+                metric_tracker.report_hparams("train_stop", train_stop.get_hparams())
+                metric_tracker.report_hparams("target_model", targeted_model.get_hparams())
+                metric_tracker.report_hparams("train_data", dl_train.get_hparams())
+                metric_tracker.report_hparams("eval_data", dl_eval.get_hparams())
+                metric_tracker.report_hparams("logger", metric_tracker.get_hparams())
 
                 direction = self.run_training(
                     targeted_model=targeted_model,

@@ -14,7 +14,7 @@ SCRIPT_PATH = "scripts/benchmark.py"
 
 MODEL_CONFIGS = {
     "llama-2-7b-chat": dict(
-        batch_size=14,
+        batch_size=8,
         paths=[
             # lmsys-1m runs
             "logs/silent-norm-ablations-v2/Llama-2-7b-chat-hf/lmsys-1m/model.embed_tokens/Llama-2-7b-chat-hf-lmsys-1m_kl=0.5-embed_tokens-iter1/metadata",
@@ -37,7 +37,7 @@ MODEL_CONFIGS = {
         ],
     ),
     "phi-3-mini-it": dict(
-        batch_size=32,
+        batch_size=10,
         paths=[
             # lmsys-1m runs
             "logs/silent-norm-ablations-v2/Phi-3-mini-4k-instruct/lmsys-1m/model.embed_tokens/Phi-3-mini-4k-instruct-lmsys-1m_kl=0.5-embed_tokens-iter1/metadata",
@@ -60,7 +60,7 @@ MODEL_CONFIGS = {
         ],
     ),
     "qwen-2.5-3b-instruct": dict(
-        batch_size=32,
+        batch_size=14,
         paths=[],
     ),
     "gemma-2b-it": dict(
@@ -118,6 +118,8 @@ def build_command(model_config: dict) -> List[str]:
         "--batch_size",
         model_config["batch_size"],
     ]
+
+    cmd_args = [str(arg) for arg in cmd_args]
 
     return cmd_args
 

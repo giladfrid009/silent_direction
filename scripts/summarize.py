@@ -24,7 +24,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "root",
         type=str,
-        help="Root folder to search recursively.",
+        nargs="+",
+        help="Root folders to search recursively.",
     )
 
     parser.add_argument(
@@ -97,7 +98,9 @@ def find_benchmarks_dirs(root: pathlib.Path) -> list[pathlib.Path]:
     dirs: list[pathlib.Path] = []
 
     # rglob is simple and robust; we look for "benchmarks" directories.
-    for p in root.rglob("benchmarks"):
+    candidates = list(root.rglob("benchmarks")) + [root]
+
+    for p in candidates:
         if not p.is_dir():
             continue
         # Require at least one json file directly inside benchmarks/
@@ -130,9 +133,8 @@ def collect_from_benchmarks_dir(bench_dir: pathlib.Path, root: pathlib.Path) -> 
 
         # Add file-level provenance; helpful when multiple jsons exist per dir.
         df.insert(0, "file", jf.name)
-        rel_path = bench_dir.relative_to(root, walk_up=True)
 
-        df.insert(0, "path", str(rel_path))
+        df.insert(0, "path", bench_dir.resolve().as_posix())
         per_file_dfs.append(df)
 
     if not per_file_dfs:
@@ -194,9 +196,26 @@ def write_output(df: pd.DataFrame, out_path: pathlib.Path) -> None:
         raise ValueError(f"Unsupported output extension: {suffix} (use .csv, .parquet, .jsonl)")
 
 
+def _validate_args():
+    for root_path in args.root:
+        path = pathlib.Path(root_path).resolve()
+        if not path.exists():
+            raise FileNotFoundError(f"Root path does not exist: {root_path}")
+
+        if not path.is_dir():
+            raise NotADirectoryError(f"Root path is not a directory: {root_path}")
+
+
 def main(args) -> int:
-    root = pathlib.Path(args.root)
-    df = collect_all(root)
+
+    _validate_args()
+
+    collected = []
+    for root_path in args.root:
+        df = collect_all(pathlib.Path(root_path))
+        collected.append(df)
+
+    df = pd.concat(collected, ignore_index=True)
 
     logger.info("Collected %d rows", len(df))
     if len(df) > 0:

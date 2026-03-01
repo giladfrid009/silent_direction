@@ -227,6 +227,10 @@ class ActivationManipulator(ActivationExtractor):
         """Create a forward hook to capture layer output."""
 
         def hook_fn(module: nn.Module, args: tuple[Tensor, ...], output: tuple[Tensor, ...] | Tensor):
+            if self.manipulation_fn is None:
+                logger.warning(f"[Layer {layer_name}]: No manipulation function set; returning original output.")
+                return output  # no-op
+
             if isinstance(output, tuple):
                 logger.debug(f"[Layer {layer_name}]: Output is a tuple; using the first element.")
                 new_output = output[0]
@@ -234,9 +238,7 @@ class ActivationManipulator(ActivationExtractor):
                 if not isinstance(new_output, torch.Tensor):
                     raise ValueError(f"[Layer {layer_name}]: Expected output to be a Tensor, got {type(output)}")
 
-                if self.manipulation_fn is not None:
-                    new_output = self.manipulation_fn(new_output)
-
+                new_output = self.manipulation_fn(new_output)
                 self._activations[layer_name] = new_output
 
                 return (new_output,) + output[1:]
@@ -245,9 +247,7 @@ class ActivationManipulator(ActivationExtractor):
                 if not isinstance(output, torch.Tensor):
                     raise ValueError(f"[Layer {layer_name}]: Expected output to be a Tensor, got {type(output)}")
 
-                if self.manipulation_fn is not None:
-                    output = self.manipulation_fn(output)
-
+                output = self.manipulation_fn(output)
                 self._activations[layer_name] = output
                 return output
 

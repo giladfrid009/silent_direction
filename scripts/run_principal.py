@@ -37,7 +37,7 @@ class PrincipalExperiment(Experiment):
             metavar="FLOAT",
             help="Weight for the projection term in the loss function.",
         )
-        
+
         parser.add_argument(
             "--kl_weight",
             type=float,
@@ -69,19 +69,6 @@ class PrincipalExperiment(Experiment):
             learning_rate=args.learning_rate,
             proj_weight=args.proj_weight,
         )
-
-        metric_tracker.report_hparams(
-            "hf_model",
-            model_config=targeted_model.model.config.to_dict(),
-            generation_config=targeted_model.model.generation_config.to_dict(),  # type: ignore
-            name=targeted_model.model.name_or_path,
-        )
-
-        metric_tracker.report_hparams("train_stop", stop_criteria.get_hparams())
-        metric_tracker.report_hparams("target_model", targeted_model.get_hparams())
-        metric_tracker.report_hparams("train_data", dl_train.get_hparams())
-        metric_tracker.report_hparams("eval_data", dl_eval.get_hparams())
-        metric_tracker.report_hparams("logger", metric_tracker.get_hparams())
 
         direction, history = train_principal(
             targeted_model=targeted_model,
