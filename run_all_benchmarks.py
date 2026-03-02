@@ -40,9 +40,9 @@ MODEL_CONFIGS = {
         batch_size=10,
         paths=[
             # lmsys-1m runs
-            "logs/silent-norm-ablations-v2/Phi-3-mini-4k-instruct/lmsys-1m/model.embed_tokens/Phi-3-mini-4k-instruct-lmsys-1m_kl=0.5-embed_tokens-iter1/metadata",
-            "logs/silent-norm-ablations-v2/Phi-3-mini-4k-instruct/lmsys-1m/model.layers.0/Phi-3-mini-4k-instruct-lmsys-1m_kl=0.5-L0-iter1/metadata",
-            "logs/silent-norm-ablations-v2/Phi-3-mini-4k-instruct/lmsys-1m/model.layers.11/Phi-3-mini-4k-instruct-lmsys-1m_kl=0.5-L11-iter1/metadata",
+            # "logs/silent-norm-ablations-v2/Phi-3-mini-4k-instruct/lmsys-1m/model.embed_tokens/Phi-3-mini-4k-instruct-lmsys-1m_kl=0.5-embed_tokens-iter1/metadata",
+            # "logs/silent-norm-ablations-v2/Phi-3-mini-4k-instruct/lmsys-1m/model.layers.0/Phi-3-mini-4k-instruct-lmsys-1m_kl=0.5-L0-iter1/metadata",
+            # "logs/silent-norm-ablations-v2/Phi-3-mini-4k-instruct/lmsys-1m/model.layers.11/Phi-3-mini-4k-instruct-lmsys-1m_kl=0.5-L11-iter1/metadata",
             "logs/silent-norm-ablations-v2/Phi-3-mini-4k-instruct/lmsys-1m/model.layers.21/Phi-3-mini-4k-instruct-lmsys-1m_kl=0.5-L21-iter1/metadata",
             "logs/silent-norm-ablations-v2/Phi-3-mini-4k-instruct/lmsys-1m/model.norm/Phi-3-mini-4k-instruct-lmsys-1m_kl=0.5-norm-iter1/metadata",
             # oasst2 runs
@@ -67,10 +67,10 @@ MODEL_CONFIGS = {
         batch_size=16,
         paths=[
             # lmsys-1m runs
-            "logs/silent-norm-ablations-v2/gemma-2b-it/lmsys-1m/model.embed_tokens/gemma-2b-it-lmsys-1m_kl=0.5-embed_tokens-iter1/metadata",
-            "logs/silent-norm-ablations-v2/gemma-2b-it/lmsys-1m/model.layers.0/gemma-2b-it-lmsys-1m_kl=0.5-L0-iter1/metadata",
-            "logs/silent-norm-ablations-v2/gemma-2b-it/lmsys-1m/model.layers.6/gemma-2b-it-lmsys-1m_kl=0.5-L6-iter1/metadata",
-            "logs/silent-norm-ablations-v2/gemma-2b-it/lmsys-1m/model.layers.12/gemma-2b-it-lmsys-1m_kl=0.5-L12-iter1/metadata",
+            # "logs/silent-norm-ablations-v2/gemma-2b-it/lmsys-1m/model.embed_tokens/gemma-2b-it-lmsys-1m_kl=0.5-embed_tokens-iter1/metadata",
+            # "logs/silent-norm-ablations-v2/gemma-2b-it/lmsys-1m/model.layers.0/gemma-2b-it-lmsys-1m_kl=0.5-L0-iter1/metadata",
+            # "logs/silent-norm-ablations-v2/gemma-2b-it/lmsys-1m/model.layers.6/gemma-2b-it-lmsys-1m_kl=0.5-L6-iter1/metadata",
+            # "logs/silent-norm-ablations-v2/gemma-2b-it/lmsys-1m/model.layers.12/gemma-2b-it-lmsys-1m_kl=0.5-L12-iter1/metadata",
             "logs/silent-norm-ablations-v2/gemma-2b-it/lmsys-1m/model.norm/gemma-2b-it-lmsys-1m_kl=0.5-norm-iter1/metadata",
             # oasst2 runs
             "logs/silent-norm-ablations-v2/gemma-2b-it/oasst2/model.embed_tokens/gemma-2b-it-oasst2_kl=0.5-embed_tokens-iter1/metadata",
@@ -193,3 +193,6 @@ if __name__ == "__main__":
 
     for model_key in target_models:
         run_benchmarks(model_key, args)
+
+
+
