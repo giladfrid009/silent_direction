@@ -1,3 +1,4 @@
+
 # Python-generated files
 __pycache__/
 *.py[oc]
@@ -5,7 +6,6 @@ build/
 dist/
 wheels/
 *.egg-info
-logs
 
 # Virtual environments
 .venv
@@ -13,6 +13,19 @@ logs
 # Others
 .env
 
+# ignore these directories
 results
 data
 slurm
+
+
+# include specifically these files
+logs/**
+!logs/
+# !logs/**/
+
+!logs/silent-norm/results.json
+!logs/silent-norm-ablations/results.json
+!logs/silent-norm-ablations-v2/results.json
+!logs/silent-norm-ablations-v3/results.json
+
