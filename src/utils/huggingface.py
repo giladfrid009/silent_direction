@@ -12,7 +12,7 @@ logger = create_logger(__name__)
 def hf_login(hf_token: str | None = None) -> str | None:
     """
     Log in to Hugging Face Hub using the provided token.
-    If no token is provided, it will try to retrieve the token from the local cache or environment variable.
+    If no token is provided, it will try to retrieve the environment variable.
 
     Args:
         hf_token (str | None): Hugging Face token. If None, it will try to retrieve the token from the local cache.
@@ -20,19 +20,22 @@ def hf_login(hf_token: str | None = None) -> str | None:
     Returns:
         str | None: The Hugging Face token if login is successful, otherwise None.
     """
-    if hf_token is None:
-        hf_token = os.getenv("HF_TOKEN")
-
-    if hf_token is None:
-        hf_token = huggingface_hub.get_token()
-
     if hf_token is not None:
-        huggingface_hub.login(token=hf_token)
+        os.environ["HF_TOKEN"] = hf_token
+        logger.info("Using provided Hugging Face token for login.")
+        return hf_token
 
-    else:
-        logger.warning("No Hugging Face token provided or found. Skipping login to Hugging Face Hub.")
+    if (hf_token := os.getenv("HF_TOKEN")) is not None:
+        logger.info("Using Hugging Face token from environment variable `HF_TOKEN` for login.")
+        return hf_token
 
-    return hf_token
+    if (hf_token := huggingface_hub.get_token()) is not None:
+        os.environ["HF_TOKEN"] = hf_token
+        logger.info("Already logged in to Hugging Face Hub.")
+        return hf_token
+
+    logger.info("No Hugging Face token provided or found. Proceeding unauthorized.")
+    return None
 
 
 def load_hf_tokenizer(

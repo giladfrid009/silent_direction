@@ -10,18 +10,18 @@ import gc
 # Global Constants & Configuration
 # =============================================================================
 
-PROJECT_NAME = "silent-norm-ablations-v2"
+PROJECT_NAME = "silent-norm-ablations-v3"
 SCRIPT_PATH = "scripts/run_norm.py"
 
 # Default Arguments shared across all runs unless overridden
 DEFAULT_RUN_ARGS = {
     "log_dir": "logs",
     "dataset": "hh-rlhf",
-    "test_datasets": ["hh-rlhf", "slim-orca", "oasst2", "tulu-v2", "lmsys-1m"],
+    "test_datasets": ["slim-orca", "oasst2", "tulu-v2", "lmsys-1m"],
     "train_batch": 8,
     "train_steps": 20000,
     "train_time": 40,
-    "train_patience": 100,
+    "train_patience": 200,
     "eval_batch": 8,
     "eval_steps": 250,
 }
@@ -34,90 +34,33 @@ DEFAULT_RUN_ARGS = {
 # Using clear names for standard setups.
 # These dictionaries are essentially just sets of CLI arguments.
 
-# baseline setting
-EXP_SETUP_BASELINE_TULU = dict(
-    learning_rate=0.1,
-    kl_weight=1.0,
-    proj_weigh=1.0,
-    dataset="tulu-v2",
-)
-
-# lower LR by 5x
-EXP_SETUP_SMALL_LR_TULU = dict(
-    learning_rate=0.02,
-    kl_weight=1.0,
-    proj_weigh=1.0,
-    dataset="tulu-v2",
-)
-
-# lower LR by 2.5x
-EXP_SETUP_MEDIUM_LR_TULU = dict(
-    learning_rate=0.04,
-    kl_weight=1.0,
-    proj_weigh=1.0,
-    dataset="tulu-v2",
-)
-
-# higher LR by 2.5x
-EXP_SETUP_LARGE_LR_TULU = dict(
-    learning_rate=0.25,
-    kl_weight=1.0,
-    proj_weigh=1.0,
-    dataset="tulu-v2",
-)
-
-# higher kl_weight by 2x
-EXP_SETUP_HIGH_KL_TULU = dict(
-    learning_rate=0.1,
-    kl_weight=2.0,
-    proj_weigh=1.0,
-    dataset="tulu-v2",
-)
-
-# lower kl_weight by 2x
-EXP_SETUP_SMALL_KL_TULU = dict(
-    learning_rate=0.1,
-    kl_weight=0.5,
-    proj_weigh=1.0,
-    dataset="tulu-v2",
-)
-
-# TODO: WITHOUT GRAD SCHEDULER AND W.O EARLY STOPPING
-EXP_SETUP_NO_EARLY_TULU = dict(
-    learning_rate=0.1,
-    kl_weight=1.0,
-    proj_weigh=1.0,
-    dataset="tulu-v2",
-    train_patience=0,
-)
-
 ########
 
 
 EXP_SETUP_HH_RLHF = dict(
     learning_rate=0.1,
-    kl_weight=10.0,
+    kl_weight=1.0,
     proj_weigh=1.0,
     dataset="hh-rlhf",
 )
 
 EXP_SETUP_SLIM_ORCA = dict(
     learning_rate=0.1,
-    kl_weight=10.0,
+    kl_weight=1.0,
     proj_weigh=1.0,
     dataset="slim-orca",
 )
 
 EXP_SETUP_OASST2 = dict(
     learning_rate=0.1,
-    kl_weight=10.0,
+    kl_weight=1.0,
     proj_weigh=1.0,
     dataset="oasst2",
 )
 
 EXP_SETUP_TULU_V2 = dict(
     learning_rate=0.1,
-    kl_weight=10.0,
+    kl_weight=1.0,
     proj_weigh=1.0,
     dataset="tulu-v2",
 )
@@ -177,13 +120,7 @@ def get_search_locations(
 MODELS = {
     "llama-2-7b-chat": {
         "experiments": {
-            "baseline-tulu": EXP_SETUP_BASELINE_TULU,
-            "small-lr-tulu": EXP_SETUP_SMALL_LR_TULU,
-            "medium-lr-tulu": EXP_SETUP_MEDIUM_LR_TULU,
-            "large-lr-tulu": EXP_SETUP_LARGE_LR_TULU,
-            "small-kl-tulu": EXP_SETUP_SMALL_KL_TULU,
-            "high-kl-tulu": EXP_SETUP_HIGH_KL_TULU,
-            "no-early-stop-tulu": EXP_SETUP_NO_EARLY_TULU,
+            "baseline-oasst": EXP_SETUP_OASST2,
         },
         # CLI Arguments
         "model": "meta-llama/Llama-2-7b-chat-hf",
@@ -196,13 +133,7 @@ MODELS = {
     },
     "phi-3-mini-it": {
         "experiments": {
-            "baseline-tulu": EXP_SETUP_BASELINE_TULU,
-            "small-lr-tulu": EXP_SETUP_SMALL_LR_TULU,
-            "medium-lr-tulu": EXP_SETUP_MEDIUM_LR_TULU,
-            "large-lr-tulu": EXP_SETUP_LARGE_LR_TULU,
-            "small-kl-tulu": EXP_SETUP_SMALL_KL_TULU,
-            "high-kl-tulu": EXP_SETUP_HIGH_KL_TULU,
-            "no-early-stop-tulu": EXP_SETUP_NO_EARLY_TULU,
+            "baseline-oasst": EXP_SETUP_OASST2,
         },
         # CLI Arguments
         "model": "microsoft/Phi-3-mini-4k-instruct",
@@ -215,13 +146,7 @@ MODELS = {
     },
     "qwen-2.5-3b-instruct": {
         "experiments": {
-            "baseline-tulu": EXP_SETUP_BASELINE_TULU,
-            "small-lr-tulu": EXP_SETUP_SMALL_LR_TULU,
-            "medium-lr-tulu": EXP_SETUP_MEDIUM_LR_TULU,
-            "large-lr-tulu": EXP_SETUP_LARGE_LR_TULU,
-            "small-kl-tulu": EXP_SETUP_SMALL_KL_TULU,
-            "high-kl-tulu": EXP_SETUP_HIGH_KL_TULU,
-            "no-early-stop-tulu": EXP_SETUP_NO_EARLY_TULU,
+            "baseline-oasst": EXP_SETUP_OASST2,
         },
         # CLI Arguments
         "model": "Qwen/Qwen2.5-3B-Instruct",
@@ -234,13 +159,7 @@ MODELS = {
     },
     "gemma-2b-it": {
         "experiments": {
-            "baseline-tulu": EXP_SETUP_BASELINE_TULU,
-            "small-lr-tulu": EXP_SETUP_SMALL_LR_TULU,
-            "medium-lr-tulu": EXP_SETUP_MEDIUM_LR_TULU,
-            "large-lr-tulu": EXP_SETUP_LARGE_LR_TULU,
-            "small-kl-tulu": EXP_SETUP_SMALL_KL_TULU,
-            "high-kl-tulu": EXP_SETUP_HIGH_KL_TULU,
-            "no-early-stop-tulu": EXP_SETUP_NO_EARLY_TULU,
+            "baseline-oasst": EXP_SETUP_OASST2,
         },
         # CLI Arguments
         "model": "google/gemma-2b-it",

@@ -1,6 +1,5 @@
 import torch
 from tqdm.auto import tqdm
-from torch.optim.lr_scheduler import ReduceLROnPlateau
 
 from src.model import TargetedModel
 from src.data import TableLoader, TableIterator

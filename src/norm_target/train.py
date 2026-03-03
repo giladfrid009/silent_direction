@@ -1,6 +1,5 @@
 import torch
 from tqdm.auto import tqdm
-from torch.optim.lr_scheduler import ReduceLROnPlateau
 import torch.nn.functional as F
 
 from src.model import TargetedModel
