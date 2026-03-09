@@ -17,7 +17,7 @@ SCRIPT_PATH = "scripts/run_norm.py"
 DEFAULT_RUN_ARGS = {
     "log_dir": "logs",
     "dataset": "hh-rlhf",
-    "test_datasets": ["slim-orca", "oasst2", "tulu-v2", "lmsys-1m"],
+    "test_datasets": ["oasst2", "tulu-v3", "lmsys-1m", "aya-dataset"],
     "train_batch": 8,
     "train_steps": 20000,
     "train_time": 40,

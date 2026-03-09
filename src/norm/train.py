@@ -126,3 +126,5 @@ def train_norm(
     pbar.close()
 
     return best_direction, history
+
+

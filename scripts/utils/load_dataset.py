@@ -17,8 +17,10 @@ class DatasetName(str, Enum):
     HH_RLHF = "hh-rlhf"
     SLIM_ORCA = "slim-orca"
     TULU_V2 = "tulu-v2"
+    TULU_V3 = "tulu-v3"
     OASST2 = "oasst2"
     LMSYS_1M = "lmsys-1m"
+    AYA_DATASET = "aya-dataset"
 
 
 SUPPORTED_DATASETS = [e.value for e in DatasetName]
@@ -135,6 +137,27 @@ def load_tulu_v2() -> DatasetDict:
     return ds_dict
 
 
+def load_tulu_v3() -> DatasetDict:
+    data_directory = dataset_dir("tulu-v3")
+    if os.path.exists(data_directory):
+        logger.info(f"Loading dataset from disk at {data_directory}")
+        return DatasetDict.load_from_disk(data_directory)
+
+    def map_fn(example: Any) -> dict:
+        conv = [{"role": msg["role"], "content": msg["content"]} for msg in example["messages"] if msg["role"] in ["user", "assistant"]]
+        return {"prompt": conv}
+
+    ds_train = datasets.load_dataset("allenai/tulu-3-sft-mixture", split="train", streaming=True)  # type: ignore
+    ds_train = ds_train.map(map_fn)
+    ds_train = ds_train.filter(partial(validate_conversation, allow_system=False))
+    ds_train = materialize_dataset(ds_train, total=939_000)
+
+    ds_dict = split_dataset(ds_train, train_size=50_000, eval_size=5000, test_size=5000)
+    logger.info(f"Saving dataset to disk at {data_directory}")
+    ds_dict.save_to_disk(data_directory)
+    return ds_dict
+
+
 def load_lmsys_1m() -> DatasetDict:
     data_directory = dataset_dir("lmsys-1m")
     if os.path.exists(data_directory):
@@ -222,6 +245,35 @@ def load_oasst2() -> DatasetDict:
     return ds_dict
 
 
+def load_aya_dataset() -> DatasetDict:
+    data_directory = dataset_dir("aya-dataset")
+    if os.path.exists(data_directory):
+        logger.info(f"Loading dataset from disk at {data_directory}")
+        return DatasetDict.load_from_disk(data_directory)
+
+    LANGUAGES = ["eng", "spa", "arb", "rus", "zho", "fra", "deu", "por"]
+
+    def map_fn(example: Any) -> dict:
+        conv = [
+            {"role": "user", "content": example["inputs"]},
+            {"role": "assistant", "content": example["targets"]},
+        ]
+        return {"prompt": conv}
+
+    def filter_fn(example: Any) -> bool:
+        return example["language_code"] in LANGUAGES and validate_conversation(example, allow_system=False)
+
+    ds_train = datasets.load_dataset("CohereLabs/aya_dataset", name="default", split="train", streaming=True)  # type: ignore
+    ds_train = ds_train.map(map_fn)
+    ds_train = ds_train.filter(filter_fn)
+    ds_train = materialize_dataset(ds_train, total=204_000)
+
+    ds_dict = split_dataset(ds_train, train_size=20_000, eval_size=2500, test_size=2500)
+    logger.info(f"Saving dataset to disk at {data_directory}")
+    ds_dict.save_to_disk(data_directory)
+    return ds_dict
+
+
 def load_raw_dataset(name: str) -> DatasetDict:
     """
     Loads and returns a dataset by name. Each dataset is expected to have the following columns:
@@ -256,11 +308,17 @@ def load_raw_dataset(name: str) -> DatasetDict:
     elif name == DatasetName.LMSYS_1M:
         return load_lmsys_1m()
 
+    elif name == DatasetName.TULU_V3:
+        return load_tulu_v3()
+    
+    elif name == DatasetName.AYA_DATASET:
+        return load_aya_dataset()
+
     else:
         raise ValueError(f"Unsupported dataset: {name}")
 
 
-def load_dataset(name: str, shuffle: bool = True) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+def load_dataset(name: str | list[str], shuffle: bool = True) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     """
     Loads a dataset by name and returns the training, validation, and test sets as pandas DataFrames.
 
@@ -271,6 +329,8 @@ def load_dataset(name: str, shuffle: bool = True) -> tuple[pd.DataFrame, pd.Data
     Returns:
         tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: A tuple containing the training, validation, and test datasets as pandas DataFrames.
     """
+    if isinstance(name, list):
+        return load_combined_dataset(name, shuffle=shuffle)
 
     ds_dict = load_raw_dataset(name)
 
@@ -304,6 +364,67 @@ def load_dataset(name: str, shuffle: bool = True) -> tuple[pd.DataFrame, pd.Data
         pd.DataFrame(ds_val.to_dict()),
         pd.DataFrame(ds_test.to_dict()),
     )
+
+
+def load_combined_dataset(names: list[str], shuffle: bool = True) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """
+    Loads multiple datasets by name, combines them, and returns the training, validation, and test sets as pandas DataFrames.
+
+    Args:
+        names (list[str]): List of dataset names to load. Each name must be one of the supported datasets.
+        shuffle (bool): Whether to shuffle the combined dataset splits. Default is True.
+
+    Returns:
+        tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]: A tuple containing the combined training, validation, and test datasets as pandas DataFrames.
+    """
+
+    if not names:
+        raise ValueError("At least one dataset name must be provided.")
+
+    all_datasets: list[tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]] = []
+
+    for name in names:
+        splits = load_dataset(name, shuffle=False)
+        all_datasets.append(splits)
+
+    # validate all datasets are of same type (chat vs raw string)
+    is_chat = is_chat_dataset(all_datasets[0][0])
+    for i, splits in enumerate(all_datasets):
+        if is_chat != is_chat_dataset(splits[0]):
+            raise ValueError(
+                f"Dataset {names[i]} has a different format than {names[0]}. All datasets must be of the same type (chat vs raw string)."
+            )
+
+    # find common columns across all datasets and keep only those
+    common_columns = set(all_datasets[0][0].columns)
+    for splits in all_datasets:
+        common_columns = common_columns.intersection(set(splits[0].columns))
+
+    if not common_columns:
+        raise ValueError("No common columns found across datasets.")
+
+    all_train = []
+    all_val = []
+    all_test = []
+
+    # keep only common columns in each dataset
+    common_columns = list(common_columns)
+    for splits in all_datasets:
+        all_train.append(splits[0][common_columns].copy())
+        all_val.append(splits[1][common_columns].copy())
+        all_test.append(splits[2][common_columns].copy())
+
+    # join
+    train_combined = pd.concat(all_train, ignore_index=True)
+    val_combined = pd.concat(all_val, ignore_index=True)
+    test_combined = pd.concat(all_test, ignore_index=True)
+
+    if shuffle:
+        train_combined = train_combined.sample(frac=1, random_state=0).reset_index(drop=True)
+        val_combined = val_combined.sample(frac=1, random_state=1).reset_index(drop=True)
+        test_combined = test_combined.sample(frac=1, random_state=2).reset_index(drop=True)
+
+    return train_combined, val_combined, test_combined
 
 
 def is_chat_dataset(data: TableLoader | pd.DataFrame) -> bool:

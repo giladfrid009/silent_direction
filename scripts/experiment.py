@@ -61,7 +61,8 @@ class Experiment(ABC):
             "--dataset",
             type=str,
             choices=SUPPORTED_DATASETS,
-            default="hh-rlhf",
+            nargs="+",
+            default=["tulu-v3"],
             metavar="DATASET",
             help=f"The datasets to use. Available datasets: {SUPPORTED_DATASETS}",
         )
@@ -293,8 +294,10 @@ class Experiment(ABC):
     ):
         args = self.args()
         dataset_names = args.test_datasets
-        if args.dataset not in dataset_names:
-            dataset_names.append(args.dataset)
+        
+        for ds in args.dataset:
+            if ds not in dataset_names:
+                dataset_names.append(ds)
 
         logger.info(f"Running final evaluation on datasets: {dataset_names}")
 
@@ -363,7 +366,7 @@ class Experiment(ABC):
             logger.error("No GPU available. Exiting.")
             sys.exit(1)
 
-        logger.info(f"Loading dataset: {args.dataset}")
+        logger.info(f"Loading datasets: {args.dataset}")
         ds_train, ds_val, ds_test = load_dataset(args.dataset)
         dl_train = TableLoader(ds_train, batch_size=args.train_batch, shuffle=True, drop_last=args.drop_last)
         dl_eval = TableLoader(ds_val, batch_size=args.eval_batch, shuffle=False)
@@ -383,7 +386,7 @@ class Experiment(ABC):
             with ExitStack() as stack:
                 metric_tracker = MetricTracker.create(
                     args.model.split("/")[-1],
-                    args.dataset,
+                    "_".join(sorted(args.dataset)),
                     layer_name,
                     self.args().run_name,
                     kind="wandb",

@@ -258,20 +258,23 @@ class Loss:
         log_baselines = F.log_softmax(baseline_logits, dim=-1)
         log_modified = F.log_softmax(modified_logits, dim=-1)
 
-        if reduction not in ["samplemean", "samplesum"]:
-            return F.kl_div(log_modified, log_baselines, reduction=reduction, log_target=True)
+        if reduction not in ["none", "samplemean", "samplesum"]:
+            return F.kl_div(log_modified, log_baselines, reduction=reduction, log_target=True) # shape [1]
 
         kl_div = F.kl_div(log_modified, log_baselines, reduction="none", log_target=True)
         kl_div_summed = kl_div.sum(dim=-1)
+        
+        if reduction == "none":
+            return kl_div_summed # shape [num_target_positions]
 
         result = torch.zeros_like(targets_mask, dtype=kl_div.dtype)
         result[targets_mask] = kl_div_summed
 
         if reduction == "samplemean":
-            return result.sum(dim=-1) / targets_mask.sum(dim=-1).clamp(min=1)
+            return result.sum(dim=-1) / targets_mask.sum(dim=-1).clamp(min=1) # shape [batch_size,]
 
         if reduction == "samplesum":
-            return result.sum(dim=-1)
+            return result.sum(dim=-1) # shape [batch_size,]
 
         raise ValueError(f"Invalid reduction method: {reduction}")
 
