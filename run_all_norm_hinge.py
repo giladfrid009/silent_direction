@@ -1,5 +1,6 @@
 import subprocess
 import argparse
+import sys
 import copy
 from typing import Dict, List, Any
 import torch
@@ -9,8 +10,8 @@ import gc
 # Global Constants & Configuration
 # =============================================================================
 
-PROJECT_NAME = "silent-norm-runs-v1"
-SCRIPT_PATH = "scripts/run_norm.py"
+PROJECT_NAME = "silent-norm-hinge-v1"
+SCRIPT_PATH = "scripts/run_norm_hinge.py"
 
 # Default Arguments shared across all runs unless overridden
 DEFAULT_RUN_ARGS = {
@@ -32,13 +33,19 @@ DEFAULT_RUN_ARGS = {
 # Using clear names for standard setups.
 # These dictionaries are essentially just sets of CLI arguments.
 
-EXP_SETUP_BASE = dict(
-    learning_rate=0.1,
-    kl_weight=10.0,
-    proj_weigh=1.0,
+########
+
+
+EXP_SETUP_KL_001 = dict(
     dataset=["oasst2", "tulu-v3"],
-    train_patience_delta=0.005,
+    learning_rate=0.1,
+    target_kl=0.01,
+    kl_coef=25.0,
+    tol_factor=2.0,
+    loss_kind="mae",
+    loss_reduction="none",
 )
+
 
 # =============================================================================
 # Model Registry
@@ -87,14 +94,14 @@ def get_search_locations(
 MODELS = {
     "llama-2-7b-chat": {
         "experiments": {
-            "KL-0.0": {**EXP_SETUP_BASE, **dict(kl_weight=0.0)},
-            "KL-0.125": {**EXP_SETUP_BASE, **dict(kl_weight=0.125)},
-            "KL-0.25": {**EXP_SETUP_BASE, **dict(kl_weight=0.25)},
-            "KL-0.5": {**EXP_SETUP_BASE, **dict(kl_weight=0.5)},
-            "KL-1.0": {**EXP_SETUP_BASE, **dict(kl_weight=1.0)},
-            "KL-2.0": {**EXP_SETUP_BASE, **dict(kl_weight=2.0)},
-            "KL-4.0": {**EXP_SETUP_BASE, **dict(kl_weight=4.0)},
-            "KL-8.0": {**EXP_SETUP_BASE, **dict(kl_weight=8.0)},
+            "KL-0.001": {**EXP_SETUP_KL_001, **{"target_kl": 0.001, "kl_coef": 0.1 / 0.001}},
+            # "KL-0.0025": {**EXP_SETUP_KL_001, **{"target_kl": 0.0025}},
+            # "KL-0.005": {**EXP_SETUP_KL_001, **{"target_kl": 0.005}},
+            # "KL-0.01": {**EXP_SETUP_KL_001, **{"target_kl": 0.01}},
+            "KL-0.025": {**EXP_SETUP_KL_001, **{"target_kl": 0.025, "kl_coef": 0.1 / 0.025}},
+            # "KL-0.05": {**EXP_SETUP_KL_001, **{"target_kl": 0.05}},
+            "KL-0.1": {**EXP_SETUP_KL_001, **{"target_kl": 0.1, "kl_coef": 0.1 / 0.1}},
+            # "KL-0.2": {**EXP_SETUP_KL_001, **{"target_kl": 0.2}},
         },
         # CLI Arguments
         "model": "meta-llama/Llama-2-7b-chat-hf",
@@ -107,14 +114,14 @@ MODELS = {
     },
     "phi-3-mini-it": {
         "experiments": {
-            "KL-0.0": {**EXP_SETUP_BASE, **dict(kl_weight=0.0)},
-            "KL-0.125": {**EXP_SETUP_BASE, **dict(kl_weight=0.125)},
-            "KL-0.25": {**EXP_SETUP_BASE, **dict(kl_weight=0.25)},
-            "KL-0.5": {**EXP_SETUP_BASE, **dict(kl_weight=0.5)},
-            "KL-1.0": {**EXP_SETUP_BASE, **dict(kl_weight=1.0)},
-            "KL-2.0": {**EXP_SETUP_BASE, **dict(kl_weight=2.0)},
-            "KL-4.0": {**EXP_SETUP_BASE, **dict(kl_weight=4.0)},
-            "KL-8.0": {**EXP_SETUP_BASE, **dict(kl_weight=8.0)},
+            "KL-0.001": {**EXP_SETUP_KL_001, **{"target_kl": 0.001, "kl_coef": 0.1 / 0.001}},
+            # "KL-0.0025": {**EXP_SETUP_KL_001, **{"target_kl": 0.0025}},
+            # "KL-0.005": {**EXP_SETUP_KL_001, **{"target_kl": 0.005}},
+            # "KL-0.01": {**EXP_SETUP_KL_001, **{"target_kl": 0.01}},
+            "KL-0.025": {**EXP_SETUP_KL_001, **{"target_kl": 0.025, "kl_coef": 0.1 / 0.025}},
+            # "KL-0.05": {**EXP_SETUP_KL_001, **{"target_kl": 0.05}},
+            "KL-0.1": {**EXP_SETUP_KL_001, **{"target_kl": 0.1, "kl_coef": 0.1 / 0.1}},
+            # "KL-0.2": {**EXP_SETUP_KL_001, **{"target_kl": 0.2}},
         },
         # CLI Arguments
         "model": "microsoft/Phi-3-mini-4k-instruct",
@@ -127,14 +134,14 @@ MODELS = {
     },
     "qwen-2.5-3b-instruct": {
         "experiments": {
-            "KL-0.0": {**EXP_SETUP_BASE, **dict(kl_weight=0.0)},
-            "KL-0.125": {**EXP_SETUP_BASE, **dict(kl_weight=0.125)},
-            "KL-0.25": {**EXP_SETUP_BASE, **dict(kl_weight=0.25)},
-            "KL-0.5": {**EXP_SETUP_BASE, **dict(kl_weight=0.5)},
-            "KL-1.0": {**EXP_SETUP_BASE, **dict(kl_weight=1.0)},
-            "KL-2.0": {**EXP_SETUP_BASE, **dict(kl_weight=2.0)},
-            "KL-4.0": {**EXP_SETUP_BASE, **dict(kl_weight=4.0)},
-            "KL-8.0": {**EXP_SETUP_BASE, **dict(kl_weight=8.0)},
+            "KL-0.001": {**EXP_SETUP_KL_001, **{"target_kl": 0.001, "kl_coef": 0.1 / 0.001}},
+            # "KL-0.0025": {**EXP_SETUP_KL_001, **{"target_kl": 0.0025}},
+            # "KL-0.005": {**EXP_SETUP_KL_001, **{"target_kl": 0.005}},
+            # "KL-0.01": {**EXP_SETUP_KL_001, **{"target_kl": 0.01}},
+            "KL-0.025": {**EXP_SETUP_KL_001, **{"target_kl": 0.025, "kl_coef": 0.1 / 0.025}},
+            # "KL-0.05": {**EXP_SETUP_KL_001, **{"target_kl": 0.05}},
+            "KL-0.1": {**EXP_SETUP_KL_001, **{"target_kl": 0.1, "kl_coef": 0.1 / 0.1}},
+            # "KL-0.2": {**EXP_SETUP_KL_001, **{"target_kl": 0.2}},
         },
         # CLI Arguments
         "model": "Qwen/Qwen2.5-3B-Instruct",
@@ -147,14 +154,14 @@ MODELS = {
     },
     "gemma-2b-it": {
         "experiments": {
-            "KL-0.0": {**EXP_SETUP_BASE, **dict(kl_weight=0.0)},
-            "KL-0.125": {**EXP_SETUP_BASE, **dict(kl_weight=0.125)},
-            "KL-0.25": {**EXP_SETUP_BASE, **dict(kl_weight=0.25)},
-            "KL-0.5": {**EXP_SETUP_BASE, **dict(kl_weight=0.5)},
-            "KL-1.0": {**EXP_SETUP_BASE, **dict(kl_weight=1.0)},
-            "KL-2.0": {**EXP_SETUP_BASE, **dict(kl_weight=2.0)},
-            "KL-4.0": {**EXP_SETUP_BASE, **dict(kl_weight=4.0)},
-            "KL-8.0": {**EXP_SETUP_BASE, **dict(kl_weight=8.0)},
+            "KL-0.001": {**EXP_SETUP_KL_001, **{"target_kl": 0.001, "kl_coef": 0.1 / 0.001}},
+            # "KL-0.0025": {**EXP_SETUP_KL_001, **{"target_kl": 0.0025}},
+            # "KL-0.005": {**EXP_SETUP_KL_001, **{"target_kl": 0.005}},
+            # "KL-0.01": {**EXP_SETUP_KL_001, **{"target_kl": 0.01}},
+            "KL-0.025": {**EXP_SETUP_KL_001, **{"target_kl": 0.025, "kl_coef": 0.1 / 0.025}},
+            # "KL-0.05": {**EXP_SETUP_KL_001, **{"target_kl": 0.05}},
+            "KL-0.1": {**EXP_SETUP_KL_001, **{"target_kl": 0.1, "kl_coef": 0.1 / 0.1}},
+            # "KL-0.2": {**EXP_SETUP_KL_001, **{"target_kl": 0.2}},
         },
         # CLI Arguments
         "model": "google/gemma-2b-it",
@@ -166,130 +173,6 @@ MODELS = {
         ),
     },
 }
-
-
-# MODELS = {
-#     "llama-2-7b-chat": {
-#         "experiments": {
-#             "exp-rlhb": EXP_SETUP_HH_RLHF,
-#             "exp-orca": EXP_SETUP_SLIM_ORCA,
-#             "exp-oasst2": EXP_SETUP_OASST2,
-#             "exp-tulu": EXP_SETUP_TULU_V2,
-#             "exp-lmsys": EXP_SETUP_LMSYS,
-#         },
-#         # CLI Arguments
-#         "model": "meta-llama/Llama-2-7b-chat-hf",
-#         "layers": get_search_locations(
-#             num_layers=32,
-#             num_probes=8,
-#             attn_path=None,
-#             mlp_path=None,
-#         ),
-#     },
-#     "phi-3-mini-it": {
-#         "experiments": {
-#             "exp-rlhb": EXP_SETUP_HH_RLHF,
-#             "exp-orca": EXP_SETUP_SLIM_ORCA,
-#             "exp-oasst2": EXP_SETUP_OASST2,
-#             "exp-tulu": EXP_SETUP_TULU_V2,
-#             "exp-lmsys": EXP_SETUP_LMSYS,
-#         },
-#         # CLI Arguments
-#         "model": "microsoft/Phi-3-mini-4k-instruct",
-#         "layers": get_search_locations(
-#             num_layers=32,
-#             num_probes=8,
-#             attn_path=None,
-#             mlp_path=None,
-#         ),
-#     },
-#     "gemma-2b-it": {
-#         "experiments": {
-#             # "exp-rlhb": EXP_SETUP_HH_RLHF,
-#             # "exp-orca": EXP_SETUP_SLIM_ORCA,
-#             # "exp-oasst2": EXP_SETUP_OASST2,
-#             "exp-tulu": EXP_SETUP_TULU_V2,
-#             # "exp-lmsys": EXP_SETUP_LMSYS,
-#         },
-#         # CLI Arguments
-#         "model": "google/gemma-2b-it",
-#         "layers": get_search_locations(
-#             num_layers=18,
-#             num_probes=8,
-#             attn_path=None,
-#             mlp_path=None,
-#         ),
-#         "test_datasets": ["hh-rlhf", "oasst2", "tulu-v2", "lmsys-1m"],
-#     },
-#     "gemma-2-2b-it": {
-#         "experiments": {
-#             # "exp-rlhb": EXP_SETUP_HH_RLHF,
-#             # "exp-orca": EXP_SETUP_SLIM_ORCA,
-#             # "exp-oasst2": EXP_SETUP_OASST2,
-#             "exp-tulu": EXP_SETUP_TULU_V2,
-#             # "exp-lmsys": EXP_SETUP_LMSYS,
-#         },
-#         # CLI Arguments
-#         "model": "google/gemma-2-2b-it",
-#         "layers": get_search_locations(
-#             num_layers=26,
-#             num_probes=8,
-#             attn_path=None,
-#             mlp_path=None,
-#         ),
-#     },
-#     "gemma-2-27b-it": {
-#         "experiments": {
-#             # "exp-rlhb": EXP_SETUP_HH_RLHF,
-#             # "exp-orca": EXP_SETUP_SLIM_ORCA,
-#             # "exp-oasst2": EXP_SETUP_OASST2,
-#             "exp-tulu": EXP_SETUP_TULU_V2,
-#             # "exp-lmsys": EXP_SETUP_LMSYS,
-#         },
-#         # CLI Arguments
-#         "model": "google/gemma-2-27b-it",
-#         "layers": get_search_locations(
-#             num_layers=46,
-#             num_probes=8,
-#             attn_path=None,
-#             mlp_path=None,
-#         ),
-#     },
-#     "qwen-2.5-3b-instruct": {
-#         "experiments": {
-#             # "exp-rlhb": EXP_SETUP_HH_RLHF,
-#             # "exp-orca": EXP_SETUP_SLIM_ORCA,
-#             # "exp-oasst2": EXP_SETUP_OASST2,
-#             "exp-tulu": EXP_SETUP_TULU_V2,
-#             # "exp-lmsys": EXP_SETUP_LMSYS,
-#         },
-#         # CLI Arguments
-#         "model": "Qwen/Qwen2.5-3B-Instruct",
-#         "layers": get_search_locations(
-#             num_layers=36,
-#             num_probes=8,
-#             attn_path=None,
-#             mlp_path=None,
-#         ),
-#     },
-#     "phi-3-medium-it": {
-#         "experiments": {
-#             # "exp-rlhb": EXP_SETUP_HH_RLHF,
-#             # "exp-orca": EXP_SETUP_SLIM_ORCA,
-#             # "exp-oasst2": EXP_SETUP_OASST2,
-#             "exp-tulu": EXP_SETUP_TULU_V2,
-#             # "exp-lmsys": EXP_SETUP_LMSYS,
-#         },
-#         # CLI Arguments
-#         "model": "microsoft/Phi-3-medium-4k-instruct",
-#         "layers": get_search_locations(
-#             num_layers=40,
-#             num_probes=8,
-#             attn_path=None,
-#             mlp_path=None,
-#         ),
-#     },
-# }
 
 
 # =============================================================================
@@ -327,7 +210,7 @@ def collect_garbage():
     gc.collect()
 
 
-def run_experiment(model_key: str, iteration: int, total_iters: int, name_suffix: str, args):
+def run_experiment(model_key: str, iteration: int, total_iters: int, name_suffix: str):
     """Executes experiments for a single model configuration."""
 
     # 1. Retrieve Model Configuration
@@ -371,26 +254,15 @@ def run_experiment(model_key: str, iteration: int, total_iters: int, name_suffix
         try:
             # print("Executing:", " ".join(cmd))
             collect_garbage()
-            subprocess.run(cmd, shell=False, check=True)
-
-        except KeyboardInterrupt as e:
+            subprocess.run(cmd, shell=False)
+        except KeyboardInterrupt:
             print("\n🚨 Execution Interrupted by User")
-            raise e
-
+            sys.exit(1)
         except subprocess.CalledProcessError as e:
             print(f"❌ Error during execution of {full_run_name}: {e}")
-
-            if not args.allow_exceptions:
-                print("Aborting further runs due to error.")
-                raise e
-
             # Continue to next experiment/model
         except Exception as e:
             print(f"❌ Unexpected error: {e}")
-
-            if not args.allow_exceptions:
-                print("Aborting further runs due to error.")
-                raise e
 
 
 # =============================================================================
@@ -398,11 +270,10 @@ def run_experiment(model_key: str, iteration: int, total_iters: int, name_suffix
 # =============================================================================
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Run consolidated IML experiments.")
+    parser = argparse.ArgumentParser(description="Run consolidated experiments.")
     parser.add_argument("--models", nargs="+", default=["all"], choices=list(MODELS.keys()) + ["all"], help="List of model keys to run, or 'all'")
     parser.add_argument("--name_suffix", type=str, default="", help="Suffix to append to experiment names.")
     parser.add_argument("--iters", type=int, default=1, help="Number of iterations to run each experiment.")
-    parser.add_argument("--allow_exceptions", action="store_true", help="Whether to continue running other experiments if one fails.")
 
     args = parser.parse_args()
 
@@ -414,4 +285,4 @@ if __name__ == "__main__":
     for model_key in target_models:
         for iteration in range(1, args.iters + 1):
             print(f"\n--- Iteration {iteration} / {args.iters} ---")
-            run_experiment(model_key, iteration, args.iters, args.name_suffix, args)
+            run_experiment(model_key, iteration, args.iters, args.name_suffix)

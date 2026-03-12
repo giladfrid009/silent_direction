@@ -47,8 +47,11 @@ def train_norm_hinge(
     learning_rate: float = 0.1,
     hinge_coef: float = 1.0,
     tol_factor: float = 2.0,
-    reduction: str = "none",
+    loss_kind: str = "mae",
+    loss_reduction: str = "none",
 ) -> tuple[torch.Tensor, list[dict[str, float]]]:
+    
+    assert loss_kind in {"mse", "mae"}, "Invalid loss kind"
 
     stop_criteria.reset()
     layer_dim = probe_layer_dim(targeted_model, layer)
@@ -94,7 +97,7 @@ def train_norm_hinge(
             modified_logits=modified_logits,
             targets_mask=targets_mask,
             top_k=None,
-            reduction="batchmean" if reduction == "mean" else reduction,
+            reduction="batchmean" if loss_reduction == "mean" else loss_reduction,
         )
 
         proj_l2_rel = Loss.projection_l2_norm(
@@ -102,7 +105,7 @@ def train_norm_hinge(
             direction=v,
             targets_mask=targets_mask,
             squared=True,
-            reduction=reduction,
+            reduction=loss_reduction,
         )
 
         top10_agr = Metrics.topk_agreement(
@@ -134,7 +137,15 @@ def train_norm_hinge(
 
         # hinge loss: maximize proj_l2_rel while penalizing KL divergence above the target_kl threshold
         constraint = kl_div - target_kl  # positive if constraint is violated, negative if satisfied
-        penalty = hinge_coef * torch.relu(constraint)  # linear penalty for constraint violation
+        
+        
+        if loss_kind == "mae":
+            penalty = hinge_coef * torch.relu(constraint)
+        elif loss_kind == "mse":
+            penalty = hinge_coef * torch.relu(constraint).square()
+        else:
+            raise ValueError("Invalid loss kind")
+            
         loss = (-proj_l2_rel + penalty).mean()
 
         loss.backward()
@@ -153,7 +164,7 @@ def train_norm_hinge(
             # additional metrics
             "constraint": constraint.mean().item(),
             "penalty": penalty.mean().item(),
-            "feasible": (kl_div <= target_kl * tol_factor).mean().item(),
+            "feasible": (kl_div <= target_kl * tol_factor).float().mean().item(),
         }
 
         # update progress

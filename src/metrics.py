@@ -1,6 +1,27 @@
 import torch
 
 
+class RunningAverage:
+    def __init__(self, window_size: int = 10):
+        self.window_size = window_size
+        self.values = []
+        self.sum = 0.0
+
+    def update(self, value: float) -> float:
+        self.values.append(value)
+        self.sum += value
+        if len(self.values) > self.window_size:
+            removed = self.values.pop(0)
+            self.sum -= removed
+            
+        return self.average()
+
+    def average(self) -> float:
+        if not self.values:
+            raise ValueError("No values to average")
+        return self.sum / len(self.values)
+
+
 class Metrics:
     @staticmethod
     @torch.inference_mode()

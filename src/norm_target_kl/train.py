@@ -109,7 +109,7 @@ def train_norm_targeted_kl(
             kl_div=kl_div_value,
             target_kl=target_kl,
             proj_norm=proj_l2_rel_value,
-            tol_factor=2.0,
+            tol_factor=tol_factor,
         )
 
         if score > best_score:
@@ -117,7 +117,7 @@ def train_norm_targeted_kl(
             best_direction = v.detach().clone()
             
         if loss_kind == "mse":
-            penalty = 0.5 * kl_coef * torch.square(kl_div - target_kl)
+            penalty = kl_coef * torch.square(kl_div - target_kl)
         elif loss_kind == "mae":
             penalty = kl_coef * torch.abs(kl_div - target_kl)
         else:
@@ -139,7 +139,7 @@ def train_norm_targeted_kl(
             "best_score": best_score,
             # additional metrics
             "penalty": penalty.mean().item(),
-            "feasible": (kl_div <= target_kl * tol_factor).mean().item(),
+            "feasible": (kl_div <= target_kl * tol_factor).float().mean().item(),
         }
 
         # update progress

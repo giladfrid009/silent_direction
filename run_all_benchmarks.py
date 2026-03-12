@@ -13,77 +13,64 @@ import gc
 SCRIPT_PATH = "scripts/benchmark.py"
 
 MODEL_CONFIGS = {
-    "llama-2-7b-chat": dict(
+    "gemma-1": dict(
+        batch_size=14,
+        paths=[
+            "logs/silent-norm-runs-v1/gemma-2b-it/oasst2_tulu-v3/model.embed_tokens",
+            "logs/silent-norm-runs-v1/gemma-2b-it/oasst2_tulu-v3/model.layers.0",
+            "logs/silent-norm-runs-v1/gemma-2b-it/oasst2_tulu-v3/model.layers.6",
+        ],
+    ),
+    "gemma-2": dict(
+        batch_size=14,
+        paths=[
+            "logs/silent-norm-runs-v1/gemma-2b-it/oasst2_tulu-v3/model.layers.12",
+            "logs/silent-norm-runs-v1/gemma-2b-it/oasst2_tulu-v3/model.norm",
+        ],
+    ),
+    "llama-1": dict(
         batch_size=8,
         paths=[
-            # lmsys-1m runs
-            "logs/silent-norm-ablations-v2/Llama-2-7b-chat-hf/lmsys-1m/model.embed_tokens/Llama-2-7b-chat-hf-lmsys-1m_kl=0.5-embed_tokens-iter1/metadata",
-            "logs/silent-norm-ablations-v2/Llama-2-7b-chat-hf/lmsys-1m/model.layers.0/Llama-2-7b-chat-hf-lmsys-1m_kl=0.5-L0-iter1/metadata",
-            "logs/silent-norm-ablations-v2/Llama-2-7b-chat-hf/lmsys-1m/model.layers.11/Llama-2-7b-chat-hf-lmsys-1m_kl=0.5-L11-iter1/metadata",
-            "logs/silent-norm-ablations-v2/Llama-2-7b-chat-hf/lmsys-1m/model.layers.21/Llama-2-7b-chat-hf-lmsys-1m_kl=0.5-L21-iter1/metadata",
-            "logs/silent-norm-ablations-v2/Llama-2-7b-chat-hf/lmsys-1m/model.norm/Llama-2-7b-chat-hf-lmsys-1m_kl=0.5-norm-iter1/metadata",
-            # oasst2 runs
-            "logs/silent-norm-ablations-v2/Llama-2-7b-chat-hf/oasst2/model.embed_tokens/Llama-2-7b-chat-hf-oasst2_kl=0.5-embed_tokens-iter1/metadata",
-            "logs/silent-norm-ablations-v2/Llama-2-7b-chat-hf/oasst2/model.layers.0/Llama-2-7b-chat-hf-oasst2_kl=0.5-L0-iter1/metadata",
-            "logs/silent-norm-ablations-v2/Llama-2-7b-chat-hf/oasst2/model.layers.11/Llama-2-7b-chat-hf-oasst2_kl=0.5-L11-iter1/metadata",
-            "logs/silent-norm-ablations-v2/Llama-2-7b-chat-hf/oasst2/model.layers.21/Llama-2-7b-chat-hf-oasst2_kl=0.5-L21-iter1/metadata",
-            "logs/silent-norm-ablations-v2/Llama-2-7b-chat-hf/oasst2/model.norm/Llama-2-7b-chat-hf-oasst2_kl=0.5-norm-iter1/metadata",
-            # tulu-v2 runs
-            "logs/silent-norm-ablations-v2/Llama-2-7b-chat-hf/tulu-v2/model.embed_tokens/Llama-2-7b-chat-hf-small-kl-tulu-iter1/metadata",
-            "logs/silent-norm-ablations-v2/Llama-2-7b-chat-hf/tulu-v2/model.layers.0/Llama-2-7b-chat-hf-small-kl-tulu-iter1/metadata",
-            "logs/silent-norm-ablations-v2/Llama-2-7b-chat-hf/tulu-v2/model.layers.11/Llama-2-7b-chat-hf-small-kl-tulu-iter1/metadata",
-            "logs/silent-norm-ablations-v2/Llama-2-7b-chat-hf/tulu-v2/model.layers.21/Llama-2-7b-chat-hf-small-kl-tulu-iter1/metadata",
-            "logs/silent-norm-ablations-v2/Llama-2-7b-chat-hf/tulu-v2/model.norm/Llama-2-7b-chat-hf-small-kl-tulu-iter1/metadata",
+            "logs/silent-norm-runs-v1/Llama-2-7b-chat-hf/oasst2_tulu-v3/model.embed_tokens",
+            "logs/silent-norm-runs-v1/Llama-2-7b-chat-hf/oasst2_tulu-v3/model.layers.0",
+            "logs/silent-norm-runs-v1/Llama-2-7b-chat-hf/oasst2_tulu-v3/model.layers.11",
         ],
     ),
-    "phi-3-mini-it": dict(
-        batch_size=10,
+    "llama-2": dict(
+        batch_size=8,
         paths=[
-            # lmsys-1m runs
-            # "logs/silent-norm-ablations-v2/Phi-3-mini-4k-instruct/lmsys-1m/model.embed_tokens/Phi-3-mini-4k-instruct-lmsys-1m_kl=0.5-embed_tokens-iter1/metadata",
-            # "logs/silent-norm-ablations-v2/Phi-3-mini-4k-instruct/lmsys-1m/model.layers.0/Phi-3-mini-4k-instruct-lmsys-1m_kl=0.5-L0-iter1/metadata",
-            # "logs/silent-norm-ablations-v2/Phi-3-mini-4k-instruct/lmsys-1m/model.layers.11/Phi-3-mini-4k-instruct-lmsys-1m_kl=0.5-L11-iter1/metadata",
-            "logs/silent-norm-ablations-v2/Phi-3-mini-4k-instruct/lmsys-1m/model.layers.21/Phi-3-mini-4k-instruct-lmsys-1m_kl=0.5-L21-iter1/metadata",
-            "logs/silent-norm-ablations-v2/Phi-3-mini-4k-instruct/lmsys-1m/model.norm/Phi-3-mini-4k-instruct-lmsys-1m_kl=0.5-norm-iter1/metadata",
-            # oasst2 runs
-            "logs/silent-norm-ablations-v2/Phi-3-mini-4k-instruct/oasst2/model.embed_tokens/Phi-3-mini-4k-instruct-oasst2_kl=0.5-embed_tokens-iter1/metadata",
-            "logs/silent-norm-ablations-v2/Phi-3-mini-4k-instruct/oasst2/model.layers.0/Phi-3-mini-4k-instruct-oasst2_kl=0.5-L0-iter1/metadata",
-            "logs/silent-norm-ablations-v2/Phi-3-mini-4k-instruct/oasst2/model.layers.11/Phi-3-mini-4k-instruct-oasst2_kl=0.5-L11-iter1/metadata",
-            "logs/silent-norm-ablations-v2/Phi-3-mini-4k-instruct/oasst2/model.layers.21/Phi-3-mini-4k-instruct-oasst2_kl=0.5-L21-iter1/metadata",
-            "logs/silent-norm-ablations-v2/Phi-3-mini-4k-instruct/oasst2/model.norm/Phi-3-mini-4k-instruct-oasst2_kl=0.5-norm-iter1/metadata",
-            # tulu-v2 runs
-            "logs/silent-norm-ablations-v2/Phi-3-mini-4k-instruct/tulu-v2/model.embed_tokens/Phi-3-mini-4k-instruct-small-kl-tulu-iter1/metadata",
-            "logs/silent-norm-ablations-v2/Phi-3-mini-4k-instruct/tulu-v2/model.layers.0/Phi-3-mini-4k-instruct-small-kl-tulu-iter1/metadata",
-            "logs/silent-norm-ablations-v2/Phi-3-mini-4k-instruct/tulu-v2/model.layers.11/Phi-3-mini-4k-instruct-small-kl-tulu-iter1/metadata",
-            "logs/silent-norm-ablations-v2/Phi-3-mini-4k-instruct/tulu-v2/model.layers.21/Phi-3-mini-4k-instruct-small-kl-tulu-iter1/metadata",
-            "logs/silent-norm-ablations-v2/Phi-3-mini-4k-instruct/tulu-v2/model.norm/Phi-3-mini-4k-instruct-small-kl-tulu-iter1/metadata",
+            "logs/silent-norm-runs-v1/Llama-2-7b-chat-hf/oasst2_tulu-v3/model.layers.21",
+            "logs/silent-norm-runs-v1/Llama-2-7b-chat-hf/oasst2_tulu-v3/model.norm",
         ],
-    ),
-    "qwen-2.5-3b-instruct": dict(
+    ),    
+    "phi-1": dict(
         batch_size=14,
-        paths=[],
-    ),
-    "gemma-2b-it": dict(
-        batch_size=16,
         paths=[
-            # lmsys-1m runs
-            # "logs/silent-norm-ablations-v2/gemma-2b-it/lmsys-1m/model.embed_tokens/gemma-2b-it-lmsys-1m_kl=0.5-embed_tokens-iter1/metadata",
-            # "logs/silent-norm-ablations-v2/gemma-2b-it/lmsys-1m/model.layers.0/gemma-2b-it-lmsys-1m_kl=0.5-L0-iter1/metadata",
-            # "logs/silent-norm-ablations-v2/gemma-2b-it/lmsys-1m/model.layers.6/gemma-2b-it-lmsys-1m_kl=0.5-L6-iter1/metadata",
-            # "logs/silent-norm-ablations-v2/gemma-2b-it/lmsys-1m/model.layers.12/gemma-2b-it-lmsys-1m_kl=0.5-L12-iter1/metadata",
-            "logs/silent-norm-ablations-v2/gemma-2b-it/lmsys-1m/model.norm/gemma-2b-it-lmsys-1m_kl=0.5-norm-iter1/metadata",
-            # oasst2 runs
-            "logs/silent-norm-ablations-v2/gemma-2b-it/oasst2/model.embed_tokens/gemma-2b-it-oasst2_kl=0.5-embed_tokens-iter1/metadata",
-            "logs/silent-norm-ablations-v2/gemma-2b-it/oasst2/model.layers.0/gemma-2b-it-oasst2_kl=0.5-L0-iter1/metadata",
-            "logs/silent-norm-ablations-v2/gemma-2b-it/oasst2/model.layers.6/gemma-2b-it-oasst2_kl=0.5-L6-iter1/metadata",
-            "logs/silent-norm-ablations-v2/gemma-2b-it/oasst2/model.layers.12/gemma-2b-it-oasst2_kl=0.5-L12-iter1/metadata",
-            "logs/silent-norm-ablations-v2/gemma-2b-it/oasst2/model.norm/gemma-2b-it-oasst2_kl=0.5-norm-iter1/metadata",
-            # tulu-v2 runs
-            "logs/silent-norm-ablations-v2/gemma-2b-it/tulu-v2/model.embed_tokens/gemma-2b-it-small-kl-tulu-iter1/metadata",
-            "logs/silent-norm-ablations-v2/gemma-2b-it/tulu-v2/model.layers.0/gemma-2b-it-small-kl-tulu-iter1/metadata",
-            "logs/silent-norm-ablations-v2/gemma-2b-it/tulu-v2/model.layers.6/gemma-2b-it-small-kl-tulu-iter1/metadata",
-            "logs/silent-norm-ablations-v2/gemma-2b-it/tulu-v2/model.layers.12/gemma-2b-it-small-kl-tulu-iter1/metadata",
-            "logs/silent-norm-ablations-v2/gemma-2b-it/tulu-v2/model.norm/gemma-2b-it-small-kl-tulu-iter1/metadata",
+            "logs/silent-norm-runs-v1/Phi-3-mini-4k-instruct/oasst2_tulu-v3/model.embed_tokens",
+            "logs/silent-norm-runs-v1/Phi-3-mini-4k-instruct/oasst2_tulu-v3/model.layers.0",
+            "logs/silent-norm-runs-v1/Phi-3-mini-4k-instruct/oasst2_tulu-v3/model.layers.11",
+        ],
+    ),
+    "phi-2": dict(
+        batch_size=14,
+        paths=[
+            "logs/silent-norm-runs-v1/Phi-3-mini-4k-instruct/oasst2_tulu-v3/model.layers.21",
+            "logs/silent-norm-runs-v1/Phi-3-mini-4k-instruct/oasst2_tulu-v3/model.norm",
+        ],
+    ),
+    "qwen-1": dict(
+        batch_size=14,
+        paths=[
+            "logs/silent-norm-runs-v1/Qwen2.5-3B-Instruct/oasst2_tulu-v3/model.embed_tokens",
+            "logs/silent-norm-runs-v1/Qwen2.5-3B-Instruct/oasst2_tulu-v3/model.layers.0",
+            "logs/silent-norm-runs-v1/Qwen2.5-3B-Instruct/oasst2_tulu-v3/model.layers.6",
+        ],
+    ),
+    "qwen-2": dict(
+        batch_size=14,
+        paths=[
+            "logs/silent-norm-runs-v1/Qwen2.5-3B-Instruct/oasst2_tulu-v3/model.layers.12",
+            "logs/silent-norm-runs-v1/Qwen2.5-3B-Instruct/oasst2_tulu-v3/model.norm",
         ],
     ),
 }
@@ -114,9 +101,9 @@ def build_command(model_config: dict) -> List[str]:
         "python",
         SCRIPT_PATH,
         *model_config["paths"],
-        "--allow_code",
         "--batch_size",
         model_config["batch_size"],
+        "--recurse",
     ]
 
     cmd_args = [str(arg) for arg in cmd_args]

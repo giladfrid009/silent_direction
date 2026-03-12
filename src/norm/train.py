@@ -4,7 +4,7 @@ from tqdm.auto import tqdm
 from src.model import TargetedModel
 from src.data import TableLoader, TableIterator
 from src.activation_extractor import ActivationExtractor, ActivationManipulator
-from src.metrics import Metrics
+from src.metrics import Metrics, RunningAverage
 from src.losses import Loss
 from src.functional import project, compute_targets_mask
 from src.norm.utils import probe_layer_dim, redundancy_score_norm
@@ -23,7 +23,11 @@ def train_norm(
     learning_rate: float = 0.01,
     proj_weight: float = 0.1,
     kl_weight: float = 1.0,
+    loss_reduction: str = "mean",
 ) -> tuple[torch.Tensor, list[dict[str, float]]]:
+
+    # samplemean computes mean over each sample tokens
+    assert loss_reduction in {"none", "mean", "samplemean"}, "Invalid loss reduction"
 
     stop_criteria.reset()
     layer_dim = probe_layer_dim(targeted_model, layer)
@@ -33,6 +37,7 @@ def train_norm(
 
     best_score = -float("inf")
     best_direction = w.clone().detach()
+    score_tracker = RunningAverage(window_size=10)
 
     def subtract_projection(activations: torch.Tensor) -> torch.Tensor:
         projection = project(activations, direction=w, normalize=True)
@@ -60,7 +65,6 @@ def train_norm(
             baseline_logits = targeted_model.forward(encodings).logits
             activations = extractor.get_activations()[layer]
             activations_normalized = torch.nn.functional.normalize(activations, dim=-1)
-            logger.debug(f"activations.shape = {activations.shape}")
 
         with manipulator.capture():
             modified_logits = targeted_model.forward(encodings).logits
@@ -70,6 +74,7 @@ def train_norm(
             modified_logits=modified_logits,
             targets_mask=targets_mask,
             top_k=None,
+            reduction="batchmean" if loss_reduction == "mean" else loss_reduction,
         )
 
         proj_l2_rel = Loss.projection_l2_norm(
@@ -77,42 +82,53 @@ def train_norm(
             direction=v,
             targets_mask=targets_mask,
             squared=True,
+            reduction=loss_reduction,
         )
-        
+
         top10_agr = Metrics.topk_agreement(
             baseline_logits=baseline_logits.detach(),
             modified_logits=modified_logits.detach(),
             targets_mask=targets_mask,
             top_k=10,
+            reduction="mean",
         )
 
         top1_acc = Metrics.top1_accuracy(
             baseline_logits=baseline_logits.detach(),
             modified_logits=modified_logits.detach(),
             targets_mask=targets_mask,
+            reduction="mean",
         )
 
-        score = redundancy_score_norm(
-            proj_norm=proj_l2_rel.item(),
-            top1_acc=top1_acc.item(),
-            top10_agr=top10_agr.item(),
-        )
+        score = proj_l2_rel.mean().item()
+
+        # score = redundancy_score_norm(
+        #     proj_norm=proj_l2_rel.item(),
+        #     top1_acc=top1_acc.item(),
+        #     top10_agr=top10_agr.item(),
+        # )
+        
+        score = score_tracker.update(score)
 
         if score > best_score:
             best_score = score
             best_direction = v.detach().clone()
 
         # compute loss and update
-        loss = kl_weight * kl_div - proj_weight * proj_l2_rel
+        kl_loss = (kl_weight * kl_div).mean()
+        proj_loss = (proj_weight * proj_l2_rel).mean()
+        loss = kl_loss - proj_loss
         loss.backward()
         optim.step()
 
         stop_criteria.update(value=score)
 
         METRICS = {
-            "loss": loss.item(),
-            "kl_div": kl_div.item(),
-            "proj_l2_rel": proj_l2_rel.item(),
+            "loss/overall": loss.item(),
+            "loss/kl_loss": kl_loss.item(),
+            "loss/proj_loss": proj_loss.item(),
+            "kl_div": kl_div.mean().item(),
+            "proj_l2_rel": proj_l2_rel.mean().item(),
             "top1_acc": top1_acc.item(),
             "top10_agr": top10_agr.item(),
             "score": score,
@@ -126,5 +142,3 @@ def train_norm(
     pbar.close()
 
     return best_direction, history
-
-

@@ -32,7 +32,7 @@ from scripts.utils.load_model import SUPPORTED_MODELS, load_model
 
 
 # NOTE: sometimes metabench doesnt work with chat templates, specifically with:
-# python scripts/benchmark.py logs/silent-norm-ablations/Llama-2-7b-chat-hf/tulu-v2/model.embed_tokens/Llama-2-7b-chat-hf-baseline-tulu-iter1/metadata --test_run --batch_size 8 --allow_code --tasks metabench
+# python scripts/benchmark.py logs/silent-norm-ablations/Llama-2-7b-chat-hf/tulu-v2/model.embed_tokens/Llama-2-7b-chat-hf-baseline-tulu-iter1/metadata --test_run --batch_size 8 --tasks metabench
 
 
 TASK_MANAGER: TaskManager | None = None  # global task manager instance to be used for all benchmarks
@@ -194,9 +194,9 @@ class Benchmarker:
         )
 
         parser.add_argument(
-            "--allow_code",
+            "--disable_code",
             action="store_true",
-            help="Whether to allow code execution during evaluation (for tasks that require it, e.g. MBPP).",
+            help="Whether to disable code execution during evaluation (for tasks that require it, e.g. MBPP).",
         )
 
         parser.add_argument(
@@ -306,9 +306,12 @@ class Benchmarker:
             seed = random.randint(0, 10000)
         logger.info(f"Random seed: {seed}")
 
-        if self.args().allow_code:
+        if not self.args().disable_code:
             os.environ["HF_ALLOW_CODE_EVAL"] = "1"
             logger.warning("Code execution is enabled for benchmarks.")
+
+        # NOTE: weird stuff to support distributed execution from multiple processes
+        # TODO
 
         torch.set_float32_matmul_precision("high")
         env.prepare_environment()
@@ -369,9 +372,11 @@ class Benchmarker:
                 log_samples=task_params.pop("log_samples", False),
                 gen_kwargs=task_params.pop("gen_kwargs", None),
                 bootstrap_iters=task_params.pop("bootstrap_iters", 0),
-                confirm_run_unsafe_code=args.allow_code,
+                confirm_run_unsafe_code=not args.disable_code,
                 apply_chat_template=meta.is_chat_model,
                 task_manager=TASK_MANAGER,
+                use_cache=None,
+                cache_requests=True,
                 **task_params,
             )
 
@@ -506,10 +511,22 @@ class Benchmarker:
                 current_run += 1
 
     def main(self):
-        self.parse_args()
-        setup_logging(level=self.args().log_level)
-        self.prepare_environment()
-        self.run()
+
+        import evaluate.config as eval_config
+        import tempfile
+
+        # NOTE: sorcery to support multi-process evaluation.
+        # some benchmarks in lm_eval use hf evaluate library. when launching benchmark
+        # from multiple processes and both processes run the same benchmark, sometimes
+        # they will try to access the same cache files in HF_METRICS_CACHE which causes crashes.
+        with tempfile.TemporaryDirectory(dir=eval_config.HF_METRICS_CACHE) as tmp_dir:
+            eval_config.HF_METRICS_CACHE = tmp_dir
+            os.environ["HF_METRICS_CACHE"] = tmp_dir
+
+            self.parse_args()
+            setup_logging(level=self.args().log_level)
+            self.prepare_environment()
+            self.run()
 
 
 if __name__ == "__main__":

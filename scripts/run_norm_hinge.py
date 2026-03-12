@@ -15,12 +15,13 @@ from src.utils.trackers import MetricTracker
 from src.config import StopCriteria
 from src.evaluate import evaluate
 
-from src.norm.train import train_norm
+from src.norm_hinge.train import train_norm_hinge
 from scripts.experiment import Experiment
 
 
-class NormExperiment(Experiment):
+class NormHingeExperiment(Experiment):
     def add_arguments(self, parser: ArgumentParser) -> None:
+
         parser.add_argument(
             "--learning_rate",
             type=float,
@@ -30,31 +31,46 @@ class NormExperiment(Experiment):
         )
 
         parser.add_argument(
-            "--proj_weight",
+            "--target_kl",
             type=float,
-            default=0.1,
-            metavar="FLOAT",
-            help="Weight for the projection term in the loss function.",
+            metavar="KL",
+            help="Target KL divergence for the projection of the activations.",
         )
 
         parser.add_argument(
-            "--kl_weight",
+            "--kl_coef",
             type=float,
-            default=1.0,
             metavar="FLOAT",
-            help="Weight for the KL divergence term in the loss function.",
+            default=1.0,
+            help="Coefficient for the KL divergence penalty.",
         )
-        
+
+        parser.add_argument(
+            "--tol_factor",
+            type=float,
+            default=2.0,
+            metavar="FLOAT",
+            help="Tolerance factor for the KL constraint in the scoring function.",
+        )
+
+        parser.add_argument(
+            "--loss_kind",
+            type=str,
+            choices=["mse", "mae"],
+            default="mae",
+            help="Kind of loss to use for the KL penalty (mse or mae).",
+        )
+
         parser.add_argument(
             "--loss_reduction",
             type=str,
             choices=["none", "mean", "samplemean"],
-            default="mean",
-            help="Reduction kind for the loss computation."
+            default="none",
+            help="Reduction method for the loss computation.",
         )
 
         parser.set_defaults(
-            project_name="silent-norm",
+            project_name="silent-norm-hinge",
         )
 
     def run_training(
@@ -69,24 +85,30 @@ class NormExperiment(Experiment):
 
         args = self.args()
 
+        metric_tracker.set_tags(target_kl=args.target_kl)
+
         metric_tracker.report_hparams(
             "main_params",
             model_name=targeted_model.model.name_or_path,
             layer_name=layer_name,
+            target_kl=args.target_kl,
             learning_rate=args.learning_rate,
-            proj_weight=args.proj_weight,
+            kl_coef=args.kl_coef,
+            tol_factor=args.tol_factor,
+            loss_kind=args.loss_kind,
+            loss_reduction=args.loss_reduction,
         )
-        
-        metric_tracker.set_tags(kl_weight=args.kl_weight)
 
-        direction, history = train_norm(
+        direction, history = train_norm_hinge(
             targeted_model=targeted_model,
             layer=layer_name,
             dl_train=dl_train,
             stop_criteria=stop_criteria,
+            target_kl=args.target_kl,
             learning_rate=args.learning_rate,
-            proj_weight=args.proj_weight,
-            kl_weight=args.kl_weight,
+            hinge_coef=args.kl_coef,
+            tol_factor=args.tol_factor,
+            loss_kind=args.loss_kind,
             loss_reduction=args.loss_reduction,
         )
 
@@ -124,5 +146,5 @@ class NormExperiment(Experiment):
 
 
 if __name__ == "__main__":
-    experiment = NormExperiment()
+    experiment = NormHingeExperiment()
     experiment.main()

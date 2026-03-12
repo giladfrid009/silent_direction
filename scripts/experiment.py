@@ -174,6 +174,14 @@ class Experiment(ABC):
         )
 
         stop_args.add_argument(
+            "--train_patience_delta",
+            type=float,
+            default=0.001,
+            metavar="DELTA",
+            help="Minimum improvement in the monitored metric to qualify as an improvement for early stopping.",
+        )
+
+        stop_args.add_argument(
             "--eval_time",
             type=int,
             default=5,
@@ -412,6 +420,7 @@ class Experiment(ABC):
                     max_steps=args.train_steps if not args.test_run else 10,
                     max_time=args.train_time if not args.test_run else 2,
                     patience=args.train_patience if args.train_patience > 0 else None,
+                    patience_delta=args.train_patience_delta,
                 )
                 
                 metric_tracker.report_hparams(
