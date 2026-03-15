@@ -9,7 +9,7 @@ import gc
 # Global Constants & Configuration
 # =============================================================================
 
-PROJECT_NAME = "silent-norm-runs-v1"
+PROJECT_NAME = "silent-norm-runs-v2"
 SCRIPT_PATH = "scripts/run_norm.py"
 
 # Default Arguments shared across all runs unless overridden
@@ -87,14 +87,14 @@ def get_search_locations(
 MODELS = {
     "llama-2-7b-chat": {
         "experiments": {
-            "KL-0.0": {**EXP_SETUP_BASE, **dict(kl_weight=0.0)},
-            "KL-0.125": {**EXP_SETUP_BASE, **dict(kl_weight=0.125)},
-            "KL-0.25": {**EXP_SETUP_BASE, **dict(kl_weight=0.25)},
-            "KL-0.5": {**EXP_SETUP_BASE, **dict(kl_weight=0.5)},
+            # "KL-0.0": {**EXP_SETUP_BASE, **dict(kl_weight=0.0)},
+            # "KL-0.125": {**EXP_SETUP_BASE, **dict(kl_weight=0.125)},
+            # "KL-0.25": {**EXP_SETUP_BASE, **dict(kl_weight=0.25)},
+            # "KL-0.5": {**EXP_SETUP_BASE, **dict(kl_weight=0.5)},
             "KL-1.0": {**EXP_SETUP_BASE, **dict(kl_weight=1.0)},
-            "KL-2.0": {**EXP_SETUP_BASE, **dict(kl_weight=2.0)},
-            "KL-4.0": {**EXP_SETUP_BASE, **dict(kl_weight=4.0)},
-            "KL-8.0": {**EXP_SETUP_BASE, **dict(kl_weight=8.0)},
+            # "KL-2.0": {**EXP_SETUP_BASE, **dict(kl_weight=2.0)},
+            # "KL-4.0": {**EXP_SETUP_BASE, **dict(kl_weight=4.0)},
+            # "KL-8.0": {**EXP_SETUP_BASE, **dict(kl_weight=8.0)},
         },
         # CLI Arguments
         "model": "meta-llama/Llama-2-7b-chat-hf",
@@ -107,14 +107,14 @@ MODELS = {
     },
     "phi-3-mini-it": {
         "experiments": {
-            "KL-0.0": {**EXP_SETUP_BASE, **dict(kl_weight=0.0)},
-            "KL-0.125": {**EXP_SETUP_BASE, **dict(kl_weight=0.125)},
-            "KL-0.25": {**EXP_SETUP_BASE, **dict(kl_weight=0.25)},
-            "KL-0.5": {**EXP_SETUP_BASE, **dict(kl_weight=0.5)},
+            # "KL-0.0": {**EXP_SETUP_BASE, **dict(kl_weight=0.0)},
+            # "KL-0.125": {**EXP_SETUP_BASE, **dict(kl_weight=0.125)},
+            # "KL-0.25": {**EXP_SETUP_BASE, **dict(kl_weight=0.25)},
+            # "KL-0.5": {**EXP_SETUP_BASE, **dict(kl_weight=0.5)},
             "KL-1.0": {**EXP_SETUP_BASE, **dict(kl_weight=1.0)},
-            "KL-2.0": {**EXP_SETUP_BASE, **dict(kl_weight=2.0)},
-            "KL-4.0": {**EXP_SETUP_BASE, **dict(kl_weight=4.0)},
-            "KL-8.0": {**EXP_SETUP_BASE, **dict(kl_weight=8.0)},
+            # "KL-2.0": {**EXP_SETUP_BASE, **dict(kl_weight=2.0)},
+            # "KL-4.0": {**EXP_SETUP_BASE, **dict(kl_weight=4.0)},
+            # "KL-8.0": {**EXP_SETUP_BASE, **dict(kl_weight=8.0)},
         },
         # CLI Arguments
         "model": "microsoft/Phi-3-mini-4k-instruct",
@@ -127,14 +127,14 @@ MODELS = {
     },
     "qwen-2.5-3b-instruct": {
         "experiments": {
-            "KL-0.0": {**EXP_SETUP_BASE, **dict(kl_weight=0.0)},
-            "KL-0.125": {**EXP_SETUP_BASE, **dict(kl_weight=0.125)},
-            "KL-0.25": {**EXP_SETUP_BASE, **dict(kl_weight=0.25)},
-            "KL-0.5": {**EXP_SETUP_BASE, **dict(kl_weight=0.5)},
+            # "KL-0.0": {**EXP_SETUP_BASE, **dict(kl_weight=0.0)},
+            # "KL-0.125": {**EXP_SETUP_BASE, **dict(kl_weight=0.125)},
+            # "KL-0.25": {**EXP_SETUP_BASE, **dict(kl_weight=0.25)},
+            # "KL-0.5": {**EXP_SETUP_BASE, **dict(kl_weight=0.5)},
             "KL-1.0": {**EXP_SETUP_BASE, **dict(kl_weight=1.0)},
-            "KL-2.0": {**EXP_SETUP_BASE, **dict(kl_weight=2.0)},
-            "KL-4.0": {**EXP_SETUP_BASE, **dict(kl_weight=4.0)},
-            "KL-8.0": {**EXP_SETUP_BASE, **dict(kl_weight=8.0)},
+            # "KL-2.0": {**EXP_SETUP_BASE, **dict(kl_weight=2.0)},
+            # "KL-4.0": {**EXP_SETUP_BASE, **dict(kl_weight=4.0)},
+            # "KL-8.0": {**EXP_SETUP_BASE, **dict(kl_weight=8.0)},
         },
         # CLI Arguments
         "model": "Qwen/Qwen2.5-3B-Instruct",
@@ -147,14 +147,14 @@ MODELS = {
     },
     "gemma-2b-it": {
         "experiments": {
-            "KL-0.0": {**EXP_SETUP_BASE, **dict(kl_weight=0.0)},
-            "KL-0.125": {**EXP_SETUP_BASE, **dict(kl_weight=0.125)},
-            "KL-0.25": {**EXP_SETUP_BASE, **dict(kl_weight=0.25)},
-            "KL-0.5": {**EXP_SETUP_BASE, **dict(kl_weight=0.5)},
+            # "KL-0.0": {**EXP_SETUP_BASE, **dict(kl_weight=0.0)},
+            # "KL-0.125": {**EXP_SETUP_BASE, **dict(kl_weight=0.125)},
+            # "KL-0.25": {**EXP_SETUP_BASE, **dict(kl_weight=0.25)},
+            # "KL-0.5": {**EXP_SETUP_BASE, **dict(kl_weight=0.5)},
             "KL-1.0": {**EXP_SETUP_BASE, **dict(kl_weight=1.0)},
-            "KL-2.0": {**EXP_SETUP_BASE, **dict(kl_weight=2.0)},
-            "KL-4.0": {**EXP_SETUP_BASE, **dict(kl_weight=4.0)},
-            "KL-8.0": {**EXP_SETUP_BASE, **dict(kl_weight=8.0)},
+            # "KL-2.0": {**EXP_SETUP_BASE, **dict(kl_weight=2.0)},
+            # "KL-4.0": {**EXP_SETUP_BASE, **dict(kl_weight=4.0)},
+            # "KL-8.0": {**EXP_SETUP_BASE, **dict(kl_weight=8.0)},
         },
         # CLI Arguments
         "model": "google/gemma-2b-it",

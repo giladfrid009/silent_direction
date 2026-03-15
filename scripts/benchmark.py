@@ -516,7 +516,7 @@ class Benchmarker:
         import tempfile
 
         # NOTE: sorcery to support multi-process evaluation.
-        # some benchmarks in lm_eval use hf evaluate library. when launching benchmark
+        # some benchmarks in lm_eval use HF evaluate library. when launching benchmark
         # from multiple processes and both processes run the same benchmark, sometimes
         # they will try to access the same cache files in HF_METRICS_CACHE which causes crashes.
         with tempfile.TemporaryDirectory(dir=eval_config.HF_METRICS_CACHE) as tmp_dir:
