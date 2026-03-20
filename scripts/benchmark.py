@@ -386,6 +386,11 @@ class Benchmarker:
                 task_manager=TASK_MANAGER,
                 use_cache=None,
                 cache_requests=True,
+                # set seeds
+                random_seed=args.seed,
+                numpy_random_seed=args.seed+1,
+                torch_random_seed=args.seed+1,
+                fewshot_random_seed=args.seed+1,
                 **task_params,
             )
 
