@@ -13,11 +13,13 @@ wheels/
 # Others
 .env
 
-# ignore these directories
+# ignore these files and directories
 results
 data
 slurm
-
+**benchmarks**
+**.pt
+**.pth
 
 # include specifically these files
 logs/**
