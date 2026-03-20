@@ -316,9 +316,6 @@ class Benchmarker:
             os.environ["HF_ALLOW_CODE_EVAL"] = "1"
             logger.warning("Code execution is enabled for benchmarks.")
 
-        # NOTE: weird stuff to support distributed execution from multiple processes
-        # TODO
-
         torch.set_float32_matmul_precision("high")
         env.prepare_environment()
         env.set_seed(seed)
@@ -347,7 +344,11 @@ class Benchmarker:
 
         if args.do_sample:  # enable sampling for generation tasks
             gen_kwargs: dict = task_params.get("gen_kwargs", {})
-            task_params["gen_kwargs"] = {**gen_kwargs, "do_sample": True}
+            task_params["gen_kwargs"] = {
+                **gen_kwargs,
+                "do_sample": True,
+                "temperature": model.generation_config.temperature if model.generation_config.temperature is not None else 1.0,
+            }
 
         if meta.direction is not None:
             meta.direction = meta.direction.to(model.device, model.dtype)
@@ -388,9 +389,9 @@ class Benchmarker:
                 cache_requests=True,
                 # set seeds
                 random_seed=args.seed,
-                numpy_random_seed=args.seed+1,
-                torch_random_seed=args.seed+1,
-                fewshot_random_seed=args.seed+1,
+                numpy_random_seed=args.seed + 1,
+                torch_random_seed=args.seed + 1,
+                fewshot_random_seed=args.seed + 1,
                 **task_params,
             )
 
