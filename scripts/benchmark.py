@@ -172,6 +172,12 @@ class Benchmarker:
         )
 
         parser.add_argument(
+            "--do_sample",
+            action="store_true",
+            help="Whether to use sampling instead of greedy decoding during evaluation (for tasks that require generation).",
+        )
+
+        parser.add_argument(
             "--seed",
             type=int,
             default=0,
@@ -339,6 +345,10 @@ class Benchmarker:
         if args.test_run:
             task_params["limit"] = batch_size * 2
 
+        if args.do_sample:  # enable sampling for generation tasks
+            gen_kwargs: dict = task_params.get("gen_kwargs", {})
+            task_params["gen_kwargs"] = {**gen_kwargs, "do_sample": True}
+
         if meta.direction is not None:
             meta.direction = meta.direction.to(model.device, model.dtype)
 
@@ -370,7 +380,6 @@ class Benchmarker:
                 tasks=[task],
                 limit=task_params.pop("limit", None),
                 log_samples=task_params.pop("log_samples", False),
-                gen_kwargs=task_params.pop("gen_kwargs", None),
                 bootstrap_iters=task_params.pop("bootstrap_iters", 0),
                 confirm_run_unsafe_code=not args.disable_code,
                 apply_chat_template=meta.is_chat_model,
