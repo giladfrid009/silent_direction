@@ -96,7 +96,7 @@ TASK_PARAMS: dict[str, dict] = {
     "anli": dict(batch_scale=6.0),
     "piqa": dict(batch_scale=6.0),
     "mbpp": dict(batch_scale=1.35),
-    "jsonschema_bench": dict(batch_scale=1.35, limit=0.33),
+    "jsonschema_bench": dict(batch_scale=1.35, limit=0.33, gen_kwargs=dict(max_gen_toks=256, until=['\n\n'])),
     "mastermind_easy": dict(batch_scale=6.0),
     "toxigen": dict(batch_scale=6.0),
     "wmdp": dict(batch_scale=1.0),
