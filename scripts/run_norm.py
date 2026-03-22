@@ -52,6 +52,13 @@ class NormExperiment(Experiment):
             default="mean",
             help="Reduction kind for the loss computation."
         )
+        
+        parser.add_argument(
+            "--window_size",
+            type=int,
+            default=10,
+            help="Window size for the running average of the score during training.",
+        )
 
         parser.set_defaults(
             project_name="silent-norm",
@@ -88,6 +95,7 @@ class NormExperiment(Experiment):
             proj_weight=args.proj_weight,
             kl_weight=args.kl_weight,
             loss_reduction=args.loss_reduction,
+            window_size=args.window_size,
         )
 
         for step, metrics in enumerate(history):

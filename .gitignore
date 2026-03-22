@@ -17,7 +17,6 @@ wheels/
 results
 data
 slurm
-**benchmarks**
 **.pt
 **.pth
 

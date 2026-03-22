@@ -403,7 +403,7 @@ class Benchmarker:
     def get_tasks(self, meta: Meta) -> list[str]:
 
         args = self.args()
-        tasks = args.tasks
+        tasks = copy.deepcopy(args.tasks)
 
         if ("auto" in args.tasks and meta.is_chat_model) or "chat" in args.tasks:
             tasks += SUPPORTED_TASKS_CHAT

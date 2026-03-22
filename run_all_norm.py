@@ -9,13 +9,12 @@ import gc
 # Global Constants & Configuration
 # =============================================================================
 
-PROJECT_NAME = "silent-norm-runs-v2"
+PROJECT_NAME = "silent-norm-runs-v3"
 SCRIPT_PATH = "scripts/run_norm.py"
 
 # Default Arguments shared across all runs unless overridden
 DEFAULT_RUN_ARGS = {
     "log_dir": "logs",
-    # "test_datasets": ["oasst2", "tulu-v3", "lmsys-1m", "aya-dataset"],
     "train_batch": 8,
     "train_steps": 20000,
     "train_time": 40,
@@ -76,8 +75,6 @@ def get_search_locations(
 
     if mlp_path is not None:
         locations += [mlp_path.format(i=i) for i in indices]
-
-    special_locations = ["model.embed_tokens", "model.norm"]
 
     locations += special_locations
 
@@ -163,6 +160,108 @@ MODELS = {
             num_probes=3,
             attn_path=None,
             mlp_path=None,
+        ),
+    },
+    "qwen-2.5-0.5b-instruct-runs1": {
+        "experiments": {
+            "KL-0.0": {**EXP_SETUP_BASE, **dict(kl_weight=0.0)},
+            # "KL-0.125": {**EXP_SETUP_BASE, **dict(kl_weight=0.125)},
+            "KL-0.25": {**EXP_SETUP_BASE, **dict(kl_weight=0.25)},
+            # "KL-0.5": {**EXP_SETUP_BASE, **dict(kl_weight=0.5)},
+            # "KL-1.0": {**EXP_SETUP_BASE, **dict(kl_weight=1.0)},
+            # "KL-2.0": {**EXP_SETUP_BASE, **dict(kl_weight=2.0)},
+            # "KL-4.0": {**EXP_SETUP_BASE, **dict(kl_weight=4.0)},
+            # "KL-8.0": {**EXP_SETUP_BASE, **dict(kl_weight=8.0)},
+        },
+        # CLI Arguments
+        "model": "Qwen/Qwen2.5-0.5B-Instruct",
+        "layers": get_search_locations(
+            num_layers=24,
+            num_probes=3,
+            attn_path=None,
+            mlp_path=None,
+        ),
+    },
+    "qwen-2.5-0.5b-instruct-runs2": {
+        "experiments": {
+            # "KL-0.0": {**EXP_SETUP_BASE, **dict(kl_weight=0.0)},
+            # "KL-0.125": {**EXP_SETUP_BASE, **dict(kl_weight=0.125)},
+            # "KL-0.25": {**EXP_SETUP_BASE, **dict(kl_weight=0.25)},
+            # "KL-0.5": {**EXP_SETUP_BASE, **dict(kl_weight=0.5)},
+            "KL-1.0": {**EXP_SETUP_BASE, **dict(kl_weight=1.0)},
+            # "KL-2.0": {**EXP_SETUP_BASE, **dict(kl_weight=2.0)},
+            "KL-4.0": {**EXP_SETUP_BASE, **dict(kl_weight=4.0)},
+            # "KL-8.0": {**EXP_SETUP_BASE, **dict(kl_weight=8.0)},
+        },
+        # CLI Arguments
+        "model": "Qwen/Qwen2.5-0.5B-Instruct",
+        "layers": get_search_locations(
+            num_layers=24,
+            num_probes=3,
+            attn_path=None,
+            mlp_path=None,
+        ),
+    },
+    "qwen-2.5-14b-instruct-runs1": {
+        "experiments": {
+            "KL-0.0": {
+                **EXP_SETUP_BASE,
+                **dict(
+                    kl_weight=0.0,
+                    train_batch=2,
+                    train_time=60*3,
+                    eval_batch=2,
+                    eval_time=15,
+                    window_size=40,
+                ),
+            },
+            # "KL-0.125": {**EXP_SETUP_BASE, **dict(kl_weight=0.125)},
+            # "KL-0.25": {**EXP_SETUP_BASE, **dict(kl_weight=0.25)},
+            # "KL-0.5": {**EXP_SETUP_BASE, **dict(kl_weight=0.5)},
+            # "KL-1.0": {**EXP_SETUP_BASE, **dict(kl_weight=1.0)},
+            # "KL-2.0": {**EXP_SETUP_BASE, **dict(kl_weight=2.0)},
+            # "KL-4.0": {**EXP_SETUP_BASE, **dict(kl_weight=4.0)},
+            # "KL-8.0": {**EXP_SETUP_BASE, **dict(kl_weight=8.0)},
+        },
+        # CLI Arguments
+        "model": "Qwen/Qwen2.5-14B-Instruct",
+        "layers": get_search_locations(
+            num_layers=48,
+            num_probes=0,
+            attn_path=None,
+            mlp_path=None,
+            special_locations=["model.norm"],
+        ),
+    },
+    "qwen-2.5-14b-instruct-runs2": {
+        "experiments": {
+            # "KL-0.0": {**EXP_SETUP_BASE, **dict(kl_weight=0.0)},
+            # "KL-0.125": {**EXP_SETUP_BASE, **dict(kl_weight=0.125)},
+            "KL-0.25": {
+                **EXP_SETUP_BASE,
+                **dict(
+                    kl_weight=0.25,
+                    train_batch=2,
+                    train_time=60 * 3,
+                    eval_batch=2,
+                    eval_time=15,
+                    window_size=40,
+                ),
+            },
+            # "KL-0.5": {**EXP_SETUP_BASE, **dict(kl_weight=0.5)},
+            # "KL-1.0": {**EXP_SETUP_BASE, **dict(kl_weight=1.0)},
+            # "KL-2.0": {**EXP_SETUP_BASE, **dict(kl_weight=2.0)},
+            # "KL-4.0": {**EXP_SETUP_BASE, **dict(kl_weight=4.0)},
+            # "KL-8.0": {**EXP_SETUP_BASE, **dict(kl_weight=8.0)},
+        },
+        # CLI Arguments
+        "model": "Qwen/Qwen2.5-14B-Instruct",
+        "layers": get_search_locations(
+            num_layers=48,
+            num_probes=0,
+            attn_path=None,
+            mlp_path=None,
+            special_locations=["model.norm"],
         ),
     },
 }

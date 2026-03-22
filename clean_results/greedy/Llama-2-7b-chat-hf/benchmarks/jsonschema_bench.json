@@ -1,0 +1,355 @@
+{
+    "results": {
+        "jsonschema_bench_easy": {
+            "alias": "jsonschema_bench_easy",
+            "json_validity,none": 0.2356020942408377,
+            "json_validity_stderr,none": "N/A",
+            "schema_compliance,none": 0.16230366492146597,
+            "schema_compliance_stderr,none": "N/A"
+        },
+        "jsonschema_bench_hard": {
+            "alias": "jsonschema_bench_hard",
+            "json_validity,none": 0.0,
+            "json_validity_stderr,none": "N/A",
+            "schema_compliance,none": 0.0,
+            "schema_compliance_stderr,none": "N/A"
+        },
+        "jsonschema_bench_medium": {
+            "alias": "jsonschema_bench_medium",
+            "json_validity,none": 0.02577319587628866,
+            "json_validity_stderr,none": "N/A",
+            "schema_compliance,none": 0.020618556701030927,
+            "schema_compliance_stderr,none": "N/A"
+        }
+    },
+    "group_subtasks": {
+        "jsonschema_bench_medium": [],
+        "jsonschema_bench_hard": [],
+        "jsonschema_bench_easy": []
+    },
+    "configs": {
+        "jsonschema_bench_easy": {
+            "task": "jsonschema_bench_easy",
+            "tag": [
+                "jsonschema_bench"
+            ],
+            "dataset_path": "epfl-dlab/JSONSchemaBench",
+            "dataset_name": "Github_easy",
+            "training_split": "train",
+            "validation_split": "valid",
+            "test_split": "test",
+            "doc_to_text": "JSON schema: {{json_schema}}\\n\\nJSON object: ",
+            "doc_to_target": "{{json_object if json_object is defined else json_schema}}",
+            "unsafe_code": false,
+            "description": "Generate a JSON object that matches the following JSON schema.",
+            "target_delimiter": " ",
+            "fewshot_delimiter": "\n\n",
+            "fewshot_config": {
+                "sampler": "first_n",
+                "split": null,
+                "process_docs": null,
+                "fewshot_indices": null,
+                "samples": [
+                    {
+                        "json_schema": "{ \"$schema\": \"http://json-schema.org/draft-04/schema#\", \"definitions\": { \"address1\": { \"type\": \"string\" }, \"address2\": { \"type\": \"string\" }, \"city\": { \"type\": \"string\" }, \"country\": { \"type\": \"string\" }, \"postalCode\": { \"type\": \"string\" }, \"state\": { \"type\": \"string\" } }, \"description\": \"A simple address schema\", \"properties\": { \"address1\": { \"$ref\": \"#/definitions/address1\" }, \"address2\": { \"$ref\": \"#/definitions/address2\" }, \"city\": { \"$ref\": \"#/definitions/city\" }, \"country\": { \"$ref\": \"#/definitions/country\" }, \"postalCode\": { \"$ref\": \"#/definitions/postalCode\" }, \"state\": { \"$ref\": \"#/definitions/state\" } }, \"type\": \"object\" }",
+                        "json_object": "{ \"address1\": \"123 Main Street\", \"address2\": \"Apt 4B\", \"city\": \"Seattle\", \"country\": \"USA\", \"postalCode\": \"98101\", \"state\": \"WA\" }"
+                    },
+                    {
+                        "json_schema": "{ \"$schema\": \"http://json-schema.org/draft-06/schema#\", \"definitions\": { \"ElementType\": { \"enum\": [ \"component\", \"directive\" ], \"type\": \"string\" }, \"SelectorChange\": { \"properties\": { \"remove\": { \"description\": \"Remove directive/component\", \"type\": \"boolean\" }, \"replaceWith\": { \"description\": \"Replace original selector with new one\", \"type\": \"string\" }, \"selector\": { \"description\": \"Original selector to apply change to\", \"type\": \"string\" }, \"type\": { \"$ref\": \"#/definitions/ElementType\", \"description\": \"Type of selector the change applies to - either component or directive\" } }, \"required\": [ \"selector\", \"type\" ], \"type\": \"object\" } }, \"properties\": { \"changes\": { \"description\": \"An array of changes to component/directive selectors\", \"items\": { \"$ref\": \"#/definitions/SelectorChange\" }, \"type\": \"array\" } }, \"required\": [ \"changes\" ], \"type\": \"object\" }",
+                        "json_object": "{ \"changes\": [ { \"selector\": \"app-root\", \"type\": \"component\", \"remove\": false, \"replaceWith\": \"new-root\" }, { \"selector\": \"my-directive\", \"type\": \"directive\", \"remove\": true, \"replaceWith\": \"new-directive\" } ] }"
+                    },
+                    {
+                        "json_schema": "{ \"additionalProperties\": false, \"description\": \"Schema for tracking e-commerce transaction details and metadata.\", \"properties\": { \"store\": { \"description\": \"The store or seller associated with the transaction.\", \"maxLength\": 500, \"type\": \"string\" }, \"discountCode\": { \"description\": \"Promotional code applied to the transaction.\", \"maxLength\": 500, \"type\": \"string\" }, \"currencyCode\": { \"description\": \"ISO 4217 currency code for the transaction.\", \"maxLength\": 3, \"minLength\": 3, \"type\": \"string\" }, \"transactionId\": { \"description\": \"Unique identifier for the transaction.\", \"maxLength\": 500, \"type\": \"string\" }, \"productList\": { \"description\": \"Identifier for the product list from which the purchase was made.\", \"maxLength\": 500, \"type\": \"string\" }, \"purchaseOption\": { \"description\": \"Additional purchase options or preferences.\", \"maxLength\": 500, \"type\": \"string\" }, \"totalAmount\": { \"description\": \"Total revenue generated from the transaction.\", \"multipleOf\": 0.01, \"type\": \"number\" }, \"deliveryCharge\": { \"description\": \"Shipping cost associated with the order.\", \"multipleOf\": 0.01, \"type\": \"number\" }, \"processStep\": { \"description\": \"Current step in the purchase or checkout process.\", \"maximum\": 2147483647, \"minimum\": 0, \"type\": \"integer\" }, \"taxAmount\": { \"description\": \"Total tax applied to the transaction.\", \"multipleOf\": 0.01, \"type\": \"number\" } }, \"self\": { \"format\": \"jsonschema\", \"name\": \"transactionDataObject\", \"vendor\": \"com.ecommerce.analytics.tracking\", \"version\": \"1-0-0\" }, \"type\": \"object\" }",
+                        "json_object": "{ \"asset_id\": \"minecraft:trim_pattern\", \"description\": { \"color\": \"#FFAA00\", \"translate\": \"trim_pattern.description\" }, \"template_item\": \"minecraft:template_item\" }"
+                    },
+                    {
+                        "json_schema": "{ \"$comment\": \"https://minecraft.fandom.com/wiki/Data_Pack\", \"$id\": \"https://json.schemastore.org/minecraft-damage-type.json\", \"$schema\": \"http://json-schema.org/draft-07/schema#\", \"description\": \"A damage type's for a Minecraft data pack config schema\", \"properties\": { \"death_message_type\": { \"enum\": [ \"default\", \"fall_variants\", \"intentional_game_design\" ], \"type\": \"string\" }, \"effects\": { \"enum\": [ \"hurt\", \"thorns\", \"drowning\", \"burning\", \"poking\", \"freezing\" ], \"type\": \"string\" }, \"exhaustion\": { \"type\": \"number\" }, \"message_id\": { \"type\": \"string\" }, \"scaling\": { \"enum\": [ \"never\", \"always\", \"when_caused_by_living_non_player\" ], \"type\": \"string\" } }, \"required\": [ \"message_id\", \"scaling\", \"exhaustion\" ], \"title\": \"Minecraft Data Pack Damage Type\", \"type\": \"object\" }",
+                        "json_object": "{ \"message_id\": \"minecraft:damage.message\", \"scaling\": \"always\", \"exhaustion\": 0.3, \"death_message_type\": \"default\", \"effects\": \"hurt\" }"
+                    },
+                    {
+                        "json_schema": "{ \"additionalProperties\": false, \"description\": \"Schema for tracking e-commerce transaction details and metadata.\", \"properties\": { \"store\": { \"description\": \"The store or seller associated with the transaction.\", \"maxLength\": 500, \"type\": \"string\" }, \"discountCode\": { \"description\": \"Promotional code applied to the transaction.\", \"maxLength\": 500, \"type\": \"string\" }, \"currencyCode\": { \"description\": \"ISO 4217 currency code for the transaction.\", \"maxLength\": 3, \"minLength\": 3, \"type\": \"string\" }, \"transactionId\": { \"description\": \"Unique identifier for the transaction.\", \"maxLength\": 500, \"type\": \"string\" }, \"productList\": { \"description\": \"Identifier for the product list from which the purchase was made.\", \"maxLength\": 500, \"type\": \"string\" }, \"purchaseOption\": { \"description\": \"Additional purchase options or preferences.\", \"maxLength\": 500, \"type\": \"string\" }, \"totalAmount\": { \"description\": \"Total revenue generated from the transaction.\", \"multipleOf\": 0.01, \"type\": \"number\" }, \"deliveryCharge\": { \"description\": \"Shipping cost associated with the order.\", \"multipleOf\": 0.01, \"type\": \"number\" }, \"processStep\": { \"description\": \"Current step in the purchase or checkout process.\", \"maximum\": 2147483647, \"minimum\": 0, \"type\": \"integer\" }, \"taxAmount\": { \"description\": \"Total tax applied to the transaction.\", \"multipleOf\": 0.01, \"type\": \"number\" } }, \"self\": { \"format\": \"jsonschema\", \"name\": \"transactionDataObject\", \"vendor\": \"com.ecommerce.analytics.tracking\", \"version\": \"1-0-0\" }, \"type\": \"object\" }",
+                        "json_object": "{ \"store\": \"TechGadgets Online\", \"discountCode\": \"SUMMER20\", \"currencyCode\": \"USD\", \"transactionId\": \"TXN123456789\", \"productList\": \"Best Sellers\", \"purchaseOption\": \"Express Shipping\", \"totalAmount\": 299.99, \"deliveryCharge\": 5.99, \"processStep\": 3, \"taxAmount\": 20.50 }"
+                    },
+                    {
+                        "json_schema": "{ \"properties\": { \"date\": { \"description\": \"The date of the meeting\", \"type\": \"string\" }, \"time\": { \"description\": \"The time of the meeting\", \"type\": \"string\" }, \"participants\": { \"description\": \"List of participants' emails\", \"type\": \"array\", \"items\": { \"type\": \"string\" } } }, \"required\": [ \"date\", \"time\" ], \"type\": \"object\" }",
+                        "json_object": "{ \"date\": \"2024-09-30\", \"time\": \"10:00 AM\", \"participants\": [ \"alice@example.com\", \"bob@example.com\" ] }"
+                    }
+                ],
+                "doc_to_text": "JSON schema: {{json_schema}}\\n\\nJSON object: ",
+                "doc_to_choice": null,
+                "doc_to_target": "{{json_object if json_object is defined else json_schema}}",
+                "gen_prefix": null,
+                "fewshot_delimiter": "\n\n",
+                "target_delimiter": " "
+            },
+            "num_fewshot": 2,
+            "metric_list": [
+                {
+                    "metric": "def json_validity(references: list[str], predictions: list[str]) -> bool:\n    assert len(predictions) == 1, (\n        \"Currently, we don't support pass@k for JSON schema validation.\"\n    )\n    prediction = predictions[0]  # Since predictions is a list of lists\n    try:\n        json.loads(prediction.strip().strip(\"```\").strip(\"json\").strip())\n    except json.JSONDecodeError:\n        return False\n    return True\n",
+                    "aggregation": "mean",
+                    "higher_is_better": true
+                },
+                {
+                    "metric": "def schema_compliance(references: list[str], predictions: list[str]) -> bool:\n    assert len(references) == 1, (\n        \"We only have one reference for this task, which is the JSON schema.\"\n    )\n    assert len(predictions) == 1, (\n        \"Currently, we don't support pass@k for JSON schema validation.\"\n    )\n    reference = references[0]\n    prediction = predictions[0]  # Since predictions is a list of lists\n\n    json_schema = json.loads(reference.strip())\n    try:\n        json_obj = json.loads(prediction.strip().strip(\"```\").strip(\"json\"))\n    except json.JSONDecodeError:\n        return False\n\n    try:\n        schema_conform = schema_conform_with_format_checker(json_obj, json_schema)\n    except Exception as e:\n        eval_logger.error(f\"Error: {e}\")\n        return False\n\n    return schema_conform\n",
+                    "aggregation": "mean",
+                    "higher_is_better": true
+                }
+            ],
+            "output_type": "generate_until",
+            "generation_kwargs": {
+                "temperature": 0.0,
+                "do_sample": false,
+                "max_gen_toks": 256,
+                "until": [
+                    "\n\n"
+                ]
+            },
+            "repeats": 1,
+            "should_decontaminate": false,
+            "metadata": {
+                "version": 0.1
+            }
+        },
+        "jsonschema_bench_hard": {
+            "task": "jsonschema_bench_hard",
+            "tag": [
+                "jsonschema_bench"
+            ],
+            "dataset_path": "epfl-dlab/JSONSchemaBench",
+            "dataset_name": "Github_hard",
+            "training_split": "train",
+            "validation_split": "valid",
+            "test_split": "test",
+            "doc_to_text": "JSON schema: {{json_schema}}\\n\\nJSON object: ",
+            "doc_to_target": "{{json_object if json_object is defined else json_schema}}",
+            "unsafe_code": false,
+            "description": "Generate a JSON object that matches the following JSON schema.",
+            "target_delimiter": " ",
+            "fewshot_delimiter": "\n\n",
+            "fewshot_config": {
+                "sampler": "first_n",
+                "split": null,
+                "process_docs": null,
+                "fewshot_indices": null,
+                "samples": [
+                    {
+                        "json_schema": "{ \"$schema\": \"http://json-schema.org/draft-04/schema#\", \"definitions\": { \"address1\": { \"type\": \"string\" }, \"address2\": { \"type\": \"string\" }, \"city\": { \"type\": \"string\" }, \"country\": { \"type\": \"string\" }, \"postalCode\": { \"type\": \"string\" }, \"state\": { \"type\": \"string\" } }, \"description\": \"A simple address schema\", \"properties\": { \"address1\": { \"$ref\": \"#/definitions/address1\" }, \"address2\": { \"$ref\": \"#/definitions/address2\" }, \"city\": { \"$ref\": \"#/definitions/city\" }, \"country\": { \"$ref\": \"#/definitions/country\" }, \"postalCode\": { \"$ref\": \"#/definitions/postalCode\" }, \"state\": { \"$ref\": \"#/definitions/state\" } }, \"type\": \"object\" }",
+                        "json_object": "{ \"address1\": \"123 Main Street\", \"address2\": \"Apt 4B\", \"city\": \"Seattle\", \"country\": \"USA\", \"postalCode\": \"98101\", \"state\": \"WA\" }"
+                    },
+                    {
+                        "json_schema": "{ \"$schema\": \"http://json-schema.org/draft-06/schema#\", \"definitions\": { \"ElementType\": { \"enum\": [ \"component\", \"directive\" ], \"type\": \"string\" }, \"SelectorChange\": { \"properties\": { \"remove\": { \"description\": \"Remove directive/component\", \"type\": \"boolean\" }, \"replaceWith\": { \"description\": \"Replace original selector with new one\", \"type\": \"string\" }, \"selector\": { \"description\": \"Original selector to apply change to\", \"type\": \"string\" }, \"type\": { \"$ref\": \"#/definitions/ElementType\", \"description\": \"Type of selector the change applies to - either component or directive\" } }, \"required\": [ \"selector\", \"type\" ], \"type\": \"object\" } }, \"properties\": { \"changes\": { \"description\": \"An array of changes to component/directive selectors\", \"items\": { \"$ref\": \"#/definitions/SelectorChange\" }, \"type\": \"array\" } }, \"required\": [ \"changes\" ], \"type\": \"object\" }",
+                        "json_object": "{ \"changes\": [ { \"selector\": \"app-root\", \"type\": \"component\", \"remove\": false, \"replaceWith\": \"new-root\" }, { \"selector\": \"my-directive\", \"type\": \"directive\", \"remove\": true, \"replaceWith\": \"new-directive\" } ] }"
+                    },
+                    {
+                        "json_schema": "{ \"additionalProperties\": false, \"description\": \"Schema for tracking e-commerce transaction details and metadata.\", \"properties\": { \"store\": { \"description\": \"The store or seller associated with the transaction.\", \"maxLength\": 500, \"type\": \"string\" }, \"discountCode\": { \"description\": \"Promotional code applied to the transaction.\", \"maxLength\": 500, \"type\": \"string\" }, \"currencyCode\": { \"description\": \"ISO 4217 currency code for the transaction.\", \"maxLength\": 3, \"minLength\": 3, \"type\": \"string\" }, \"transactionId\": { \"description\": \"Unique identifier for the transaction.\", \"maxLength\": 500, \"type\": \"string\" }, \"productList\": { \"description\": \"Identifier for the product list from which the purchase was made.\", \"maxLength\": 500, \"type\": \"string\" }, \"purchaseOption\": { \"description\": \"Additional purchase options or preferences.\", \"maxLength\": 500, \"type\": \"string\" }, \"totalAmount\": { \"description\": \"Total revenue generated from the transaction.\", \"multipleOf\": 0.01, \"type\": \"number\" }, \"deliveryCharge\": { \"description\": \"Shipping cost associated with the order.\", \"multipleOf\": 0.01, \"type\": \"number\" }, \"processStep\": { \"description\": \"Current step in the purchase or checkout process.\", \"maximum\": 2147483647, \"minimum\": 0, \"type\": \"integer\" }, \"taxAmount\": { \"description\": \"Total tax applied to the transaction.\", \"multipleOf\": 0.01, \"type\": \"number\" } }, \"self\": { \"format\": \"jsonschema\", \"name\": \"transactionDataObject\", \"vendor\": \"com.ecommerce.analytics.tracking\", \"version\": \"1-0-0\" }, \"type\": \"object\" }",
+                        "json_object": "{ \"asset_id\": \"minecraft:trim_pattern\", \"description\": { \"color\": \"#FFAA00\", \"translate\": \"trim_pattern.description\" }, \"template_item\": \"minecraft:template_item\" }"
+                    },
+                    {
+                        "json_schema": "{ \"$comment\": \"https://minecraft.fandom.com/wiki/Data_Pack\", \"$id\": \"https://json.schemastore.org/minecraft-damage-type.json\", \"$schema\": \"http://json-schema.org/draft-07/schema#\", \"description\": \"A damage type's for a Minecraft data pack config schema\", \"properties\": { \"death_message_type\": { \"enum\": [ \"default\", \"fall_variants\", \"intentional_game_design\" ], \"type\": \"string\" }, \"effects\": { \"enum\": [ \"hurt\", \"thorns\", \"drowning\", \"burning\", \"poking\", \"freezing\" ], \"type\": \"string\" }, \"exhaustion\": { \"type\": \"number\" }, \"message_id\": { \"type\": \"string\" }, \"scaling\": { \"enum\": [ \"never\", \"always\", \"when_caused_by_living_non_player\" ], \"type\": \"string\" } }, \"required\": [ \"message_id\", \"scaling\", \"exhaustion\" ], \"title\": \"Minecraft Data Pack Damage Type\", \"type\": \"object\" }",
+                        "json_object": "{ \"message_id\": \"minecraft:damage.message\", \"scaling\": \"always\", \"exhaustion\": 0.3, \"death_message_type\": \"default\", \"effects\": \"hurt\" }"
+                    },
+                    {
+                        "json_schema": "{ \"additionalProperties\": false, \"description\": \"Schema for tracking e-commerce transaction details and metadata.\", \"properties\": { \"store\": { \"description\": \"The store or seller associated with the transaction.\", \"maxLength\": 500, \"type\": \"string\" }, \"discountCode\": { \"description\": \"Promotional code applied to the transaction.\", \"maxLength\": 500, \"type\": \"string\" }, \"currencyCode\": { \"description\": \"ISO 4217 currency code for the transaction.\", \"maxLength\": 3, \"minLength\": 3, \"type\": \"string\" }, \"transactionId\": { \"description\": \"Unique identifier for the transaction.\", \"maxLength\": 500, \"type\": \"string\" }, \"productList\": { \"description\": \"Identifier for the product list from which the purchase was made.\", \"maxLength\": 500, \"type\": \"string\" }, \"purchaseOption\": { \"description\": \"Additional purchase options or preferences.\", \"maxLength\": 500, \"type\": \"string\" }, \"totalAmount\": { \"description\": \"Total revenue generated from the transaction.\", \"multipleOf\": 0.01, \"type\": \"number\" }, \"deliveryCharge\": { \"description\": \"Shipping cost associated with the order.\", \"multipleOf\": 0.01, \"type\": \"number\" }, \"processStep\": { \"description\": \"Current step in the purchase or checkout process.\", \"maximum\": 2147483647, \"minimum\": 0, \"type\": \"integer\" }, \"taxAmount\": { \"description\": \"Total tax applied to the transaction.\", \"multipleOf\": 0.01, \"type\": \"number\" } }, \"self\": { \"format\": \"jsonschema\", \"name\": \"transactionDataObject\", \"vendor\": \"com.ecommerce.analytics.tracking\", \"version\": \"1-0-0\" }, \"type\": \"object\" }",
+                        "json_object": "{ \"store\": \"TechGadgets Online\", \"discountCode\": \"SUMMER20\", \"currencyCode\": \"USD\", \"transactionId\": \"TXN123456789\", \"productList\": \"Best Sellers\", \"purchaseOption\": \"Express Shipping\", \"totalAmount\": 299.99, \"deliveryCharge\": 5.99, \"processStep\": 3, \"taxAmount\": 20.50 }"
+                    },
+                    {
+                        "json_schema": "{ \"properties\": { \"date\": { \"description\": \"The date of the meeting\", \"type\": \"string\" }, \"time\": { \"description\": \"The time of the meeting\", \"type\": \"string\" }, \"participants\": { \"description\": \"List of participants' emails\", \"type\": \"array\", \"items\": { \"type\": \"string\" } } }, \"required\": [ \"date\", \"time\" ], \"type\": \"object\" }",
+                        "json_object": "{ \"date\": \"2024-09-30\", \"time\": \"10:00 AM\", \"participants\": [ \"alice@example.com\", \"bob@example.com\" ] }"
+                    }
+                ],
+                "doc_to_text": "JSON schema: {{json_schema}}\\n\\nJSON object: ",
+                "doc_to_choice": null,
+                "doc_to_target": "{{json_object if json_object is defined else json_schema}}",
+                "gen_prefix": null,
+                "fewshot_delimiter": "\n\n",
+                "target_delimiter": " "
+            },
+            "num_fewshot": 2,
+            "metric_list": [
+                {
+                    "metric": "def json_validity(references: list[str], predictions: list[str]) -> bool:\n    assert len(predictions) == 1, (\n        \"Currently, we don't support pass@k for JSON schema validation.\"\n    )\n    prediction = predictions[0]  # Since predictions is a list of lists\n    try:\n        json.loads(prediction.strip().strip(\"```\").strip(\"json\").strip())\n    except json.JSONDecodeError:\n        return False\n    return True\n",
+                    "aggregation": "mean",
+                    "higher_is_better": true
+                },
+                {
+                    "metric": "def schema_compliance(references: list[str], predictions: list[str]) -> bool:\n    assert len(references) == 1, (\n        \"We only have one reference for this task, which is the JSON schema.\"\n    )\n    assert len(predictions) == 1, (\n        \"Currently, we don't support pass@k for JSON schema validation.\"\n    )\n    reference = references[0]\n    prediction = predictions[0]  # Since predictions is a list of lists\n\n    json_schema = json.loads(reference.strip())\n    try:\n        json_obj = json.loads(prediction.strip().strip(\"```\").strip(\"json\"))\n    except json.JSONDecodeError:\n        return False\n\n    try:\n        schema_conform = schema_conform_with_format_checker(json_obj, json_schema)\n    except Exception as e:\n        eval_logger.error(f\"Error: {e}\")\n        return False\n\n    return schema_conform\n",
+                    "aggregation": "mean",
+                    "higher_is_better": true
+                }
+            ],
+            "output_type": "generate_until",
+            "generation_kwargs": {
+                "temperature": 0.0,
+                "do_sample": false,
+                "max_gen_toks": 256,
+                "until": [
+                    "\n\n"
+                ]
+            },
+            "repeats": 1,
+            "should_decontaminate": false,
+            "metadata": {
+                "version": 0.1
+            }
+        },
+        "jsonschema_bench_medium": {
+            "task": "jsonschema_bench_medium",
+            "tag": [
+                "jsonschema_bench"
+            ],
+            "dataset_path": "epfl-dlab/JSONSchemaBench",
+            "dataset_name": "Github_medium",
+            "training_split": "train",
+            "validation_split": "valid",
+            "test_split": "test",
+            "doc_to_text": "JSON schema: {{json_schema}}\\n\\nJSON object: ",
+            "doc_to_target": "{{json_object if json_object is defined else json_schema}}",
+            "unsafe_code": false,
+            "description": "Generate a JSON object that matches the following JSON schema.",
+            "target_delimiter": " ",
+            "fewshot_delimiter": "\n\n",
+            "fewshot_config": {
+                "sampler": "first_n",
+                "split": null,
+                "process_docs": null,
+                "fewshot_indices": null,
+                "samples": [
+                    {
+                        "json_schema": "{ \"$schema\": \"http://json-schema.org/draft-04/schema#\", \"definitions\": { \"address1\": { \"type\": \"string\" }, \"address2\": { \"type\": \"string\" }, \"city\": { \"type\": \"string\" }, \"country\": { \"type\": \"string\" }, \"postalCode\": { \"type\": \"string\" }, \"state\": { \"type\": \"string\" } }, \"description\": \"A simple address schema\", \"properties\": { \"address1\": { \"$ref\": \"#/definitions/address1\" }, \"address2\": { \"$ref\": \"#/definitions/address2\" }, \"city\": { \"$ref\": \"#/definitions/city\" }, \"country\": { \"$ref\": \"#/definitions/country\" }, \"postalCode\": { \"$ref\": \"#/definitions/postalCode\" }, \"state\": { \"$ref\": \"#/definitions/state\" } }, \"type\": \"object\" }",
+                        "json_object": "{ \"address1\": \"123 Main Street\", \"address2\": \"Apt 4B\", \"city\": \"Seattle\", \"country\": \"USA\", \"postalCode\": \"98101\", \"state\": \"WA\" }"
+                    },
+                    {
+                        "json_schema": "{ \"$schema\": \"http://json-schema.org/draft-06/schema#\", \"definitions\": { \"ElementType\": { \"enum\": [ \"component\", \"directive\" ], \"type\": \"string\" }, \"SelectorChange\": { \"properties\": { \"remove\": { \"description\": \"Remove directive/component\", \"type\": \"boolean\" }, \"replaceWith\": { \"description\": \"Replace original selector with new one\", \"type\": \"string\" }, \"selector\": { \"description\": \"Original selector to apply change to\", \"type\": \"string\" }, \"type\": { \"$ref\": \"#/definitions/ElementType\", \"description\": \"Type of selector the change applies to - either component or directive\" } }, \"required\": [ \"selector\", \"type\" ], \"type\": \"object\" } }, \"properties\": { \"changes\": { \"description\": \"An array of changes to component/directive selectors\", \"items\": { \"$ref\": \"#/definitions/SelectorChange\" }, \"type\": \"array\" } }, \"required\": [ \"changes\" ], \"type\": \"object\" }",
+                        "json_object": "{ \"changes\": [ { \"selector\": \"app-root\", \"type\": \"component\", \"remove\": false, \"replaceWith\": \"new-root\" }, { \"selector\": \"my-directive\", \"type\": \"directive\", \"remove\": true, \"replaceWith\": \"new-directive\" } ] }"
+                    },
+                    {
+                        "json_schema": "{ \"additionalProperties\": false, \"description\": \"Schema for tracking e-commerce transaction details and metadata.\", \"properties\": { \"store\": { \"description\": \"The store or seller associated with the transaction.\", \"maxLength\": 500, \"type\": \"string\" }, \"discountCode\": { \"description\": \"Promotional code applied to the transaction.\", \"maxLength\": 500, \"type\": \"string\" }, \"currencyCode\": { \"description\": \"ISO 4217 currency code for the transaction.\", \"maxLength\": 3, \"minLength\": 3, \"type\": \"string\" }, \"transactionId\": { \"description\": \"Unique identifier for the transaction.\", \"maxLength\": 500, \"type\": \"string\" }, \"productList\": { \"description\": \"Identifier for the product list from which the purchase was made.\", \"maxLength\": 500, \"type\": \"string\" }, \"purchaseOption\": { \"description\": \"Additional purchase options or preferences.\", \"maxLength\": 500, \"type\": \"string\" }, \"totalAmount\": { \"description\": \"Total revenue generated from the transaction.\", \"multipleOf\": 0.01, \"type\": \"number\" }, \"deliveryCharge\": { \"description\": \"Shipping cost associated with the order.\", \"multipleOf\": 0.01, \"type\": \"number\" }, \"processStep\": { \"description\": \"Current step in the purchase or checkout process.\", \"maximum\": 2147483647, \"minimum\": 0, \"type\": \"integer\" }, \"taxAmount\": { \"description\": \"Total tax applied to the transaction.\", \"multipleOf\": 0.01, \"type\": \"number\" } }, \"self\": { \"format\": \"jsonschema\", \"name\": \"transactionDataObject\", \"vendor\": \"com.ecommerce.analytics.tracking\", \"version\": \"1-0-0\" }, \"type\": \"object\" }",
+                        "json_object": "{ \"asset_id\": \"minecraft:trim_pattern\", \"description\": { \"color\": \"#FFAA00\", \"translate\": \"trim_pattern.description\" }, \"template_item\": \"minecraft:template_item\" }"
+                    },
+                    {
+                        "json_schema": "{ \"$comment\": \"https://minecraft.fandom.com/wiki/Data_Pack\", \"$id\": \"https://json.schemastore.org/minecraft-damage-type.json\", \"$schema\": \"http://json-schema.org/draft-07/schema#\", \"description\": \"A damage type's for a Minecraft data pack config schema\", \"properties\": { \"death_message_type\": { \"enum\": [ \"default\", \"fall_variants\", \"intentional_game_design\" ], \"type\": \"string\" }, \"effects\": { \"enum\": [ \"hurt\", \"thorns\", \"drowning\", \"burning\", \"poking\", \"freezing\" ], \"type\": \"string\" }, \"exhaustion\": { \"type\": \"number\" }, \"message_id\": { \"type\": \"string\" }, \"scaling\": { \"enum\": [ \"never\", \"always\", \"when_caused_by_living_non_player\" ], \"type\": \"string\" } }, \"required\": [ \"message_id\", \"scaling\", \"exhaustion\" ], \"title\": \"Minecraft Data Pack Damage Type\", \"type\": \"object\" }",
+                        "json_object": "{ \"message_id\": \"minecraft:damage.message\", \"scaling\": \"always\", \"exhaustion\": 0.3, \"death_message_type\": \"default\", \"effects\": \"hurt\" }"
+                    },
+                    {
+                        "json_schema": "{ \"additionalProperties\": false, \"description\": \"Schema for tracking e-commerce transaction details and metadata.\", \"properties\": { \"store\": { \"description\": \"The store or seller associated with the transaction.\", \"maxLength\": 500, \"type\": \"string\" }, \"discountCode\": { \"description\": \"Promotional code applied to the transaction.\", \"maxLength\": 500, \"type\": \"string\" }, \"currencyCode\": { \"description\": \"ISO 4217 currency code for the transaction.\", \"maxLength\": 3, \"minLength\": 3, \"type\": \"string\" }, \"transactionId\": { \"description\": \"Unique identifier for the transaction.\", \"maxLength\": 500, \"type\": \"string\" }, \"productList\": { \"description\": \"Identifier for the product list from which the purchase was made.\", \"maxLength\": 500, \"type\": \"string\" }, \"purchaseOption\": { \"description\": \"Additional purchase options or preferences.\", \"maxLength\": 500, \"type\": \"string\" }, \"totalAmount\": { \"description\": \"Total revenue generated from the transaction.\", \"multipleOf\": 0.01, \"type\": \"number\" }, \"deliveryCharge\": { \"description\": \"Shipping cost associated with the order.\", \"multipleOf\": 0.01, \"type\": \"number\" }, \"processStep\": { \"description\": \"Current step in the purchase or checkout process.\", \"maximum\": 2147483647, \"minimum\": 0, \"type\": \"integer\" }, \"taxAmount\": { \"description\": \"Total tax applied to the transaction.\", \"multipleOf\": 0.01, \"type\": \"number\" } }, \"self\": { \"format\": \"jsonschema\", \"name\": \"transactionDataObject\", \"vendor\": \"com.ecommerce.analytics.tracking\", \"version\": \"1-0-0\" }, \"type\": \"object\" }",
+                        "json_object": "{ \"store\": \"TechGadgets Online\", \"discountCode\": \"SUMMER20\", \"currencyCode\": \"USD\", \"transactionId\": \"TXN123456789\", \"productList\": \"Best Sellers\", \"purchaseOption\": \"Express Shipping\", \"totalAmount\": 299.99, \"deliveryCharge\": 5.99, \"processStep\": 3, \"taxAmount\": 20.50 }"
+                    },
+                    {
+                        "json_schema": "{ \"properties\": { \"date\": { \"description\": \"The date of the meeting\", \"type\": \"string\" }, \"time\": { \"description\": \"The time of the meeting\", \"type\": \"string\" }, \"participants\": { \"description\": \"List of participants' emails\", \"type\": \"array\", \"items\": { \"type\": \"string\" } } }, \"required\": [ \"date\", \"time\" ], \"type\": \"object\" }",
+                        "json_object": "{ \"date\": \"2024-09-30\", \"time\": \"10:00 AM\", \"participants\": [ \"alice@example.com\", \"bob@example.com\" ] }"
+                    }
+                ],
+                "doc_to_text": "JSON schema: {{json_schema}}\\n\\nJSON object: ",
+                "doc_to_choice": null,
+                "doc_to_target": "{{json_object if json_object is defined else json_schema}}",
+                "gen_prefix": null,
+                "fewshot_delimiter": "\n\n",
+                "target_delimiter": " "
+            },
+            "num_fewshot": 2,
+            "metric_list": [
+                {
+                    "metric": "def json_validity(references: list[str], predictions: list[str]) -> bool:\n    assert len(predictions) == 1, (\n        \"Currently, we don't support pass@k for JSON schema validation.\"\n    )\n    prediction = predictions[0]  # Since predictions is a list of lists\n    try:\n        json.loads(prediction.strip().strip(\"```\").strip(\"json\").strip())\n    except json.JSONDecodeError:\n        return False\n    return True\n",
+                    "aggregation": "mean",
+                    "higher_is_better": true
+                },
+                {
+                    "metric": "def schema_compliance(references: list[str], predictions: list[str]) -> bool:\n    assert len(references) == 1, (\n        \"We only have one reference for this task, which is the JSON schema.\"\n    )\n    assert len(predictions) == 1, (\n        \"Currently, we don't support pass@k for JSON schema validation.\"\n    )\n    reference = references[0]\n    prediction = predictions[0]  # Since predictions is a list of lists\n\n    json_schema = json.loads(reference.strip())\n    try:\n        json_obj = json.loads(prediction.strip().strip(\"```\").strip(\"json\"))\n    except json.JSONDecodeError:\n        return False\n\n    try:\n        schema_conform = schema_conform_with_format_checker(json_obj, json_schema)\n    except Exception as e:\n        eval_logger.error(f\"Error: {e}\")\n        return False\n\n    return schema_conform\n",
+                    "aggregation": "mean",
+                    "higher_is_better": true
+                }
+            ],
+            "output_type": "generate_until",
+            "generation_kwargs": {
+                "temperature": 0.0,
+                "do_sample": false,
+                "max_gen_toks": 256,
+                "until": [
+                    "\n\n"
+                ]
+            },
+            "repeats": 1,
+            "should_decontaminate": false,
+            "metadata": {
+                "version": 0.1
+            }
+        }
+    },
+    "versions": {
+        "jsonschema_bench_easy": 0.1,
+        "jsonschema_bench_hard": 0.1,
+        "jsonschema_bench_medium": 0.1
+    },
+    "n-shot": {
+        "jsonschema_bench_easy": 2,
+        "jsonschema_bench_hard": 2,
+        "jsonschema_bench_medium": 2
+    },
+    "higher_is_better": {
+        "jsonschema_bench_easy": {
+            "json_validity": true,
+            "schema_compliance": true
+        },
+        "jsonschema_bench_hard": {
+            "json_validity": true,
+            "schema_compliance": true
+        },
+        "jsonschema_bench_medium": {
+            "json_validity": true,
+            "schema_compliance": true
+        }
+    },
+    "n-samples": {
+        "jsonschema_bench_easy": {
+            "original": 577,
+            "effective": 191
+        },
+        "jsonschema_bench_hard": {
+            "original": 368,
+            "effective": 122
+        },
+        "jsonschema_bench_medium": {
+            "original": 586,
+            "effective": 194
+        }
+    },
+    "config": {
+        "model": "meta-llama/Llama-2-7b-chat-hf",
+        "model_args": null,
+        "model_num_parameters": 6738415616,
+        "model_dtype": "torch.bfloat16",
+        "model_revision": "main",
+        "model_sha": "",
+        "batch_size": null,
+        "batch_sizes": [],
+        "device": null,
+        "use_cache": null,
+        "limit": 0.33,
+        "bootstrap_iters": 0,
+        "gen_kwargs": null,
+        "random_seed": 0,
+        "numpy_seed": 1234,
+        "torch_seed": 1234,
+        "fewshot_seed": 1234
+    },
+    "git_hash": "c45560f",
+    "date": 1772386166.9456246,
+    "pretty_env_info": "PyTorch version: 2.9.1+cu128\nIs debug build: False\nCUDA used to build PyTorch: 12.8\nROCM used to build PyTorch: N/A\n\nOS: Ubuntu 22.04.5 LTS (x86_64)\nGCC version: (Ubuntu 11.4.0-1ubuntu1~22.04) 11.4.0\nClang version: Could not collect\nCMake version: Could not collect\nLibc version: glibc-2.35\n\nPython version: 3.12.12 (main, Oct 14 2025, 21:25:31) [Clang 20.1.4 ] (64-bit runtime)\nPython platform: Linux-5.15.0-151-generic-x86_64-with-glibc2.35\nIs CUDA available: True\nCUDA runtime version: Could not collect\nCUDA_MODULE_LOADING set to: \nGPU models and configuration: \nGPU 0: NVIDIA L40S\nGPU 1: NVIDIA L40S\n\nNvidia driver version: 535.247.01\ncuDNN version: Could not collect\nIs XPU available: False\nHIP runtime version: N/A\nMIOpen runtime version: N/A\nIs XNNPACK available: True\n\nCPU:\nArchitecture:                            x86_64\nCPU op-mode(s):                          32-bit, 64-bit\nAddress sizes:                           46 bits physical, 57 bits virtual\nByte Order:                              Little Endian\nCPU(s):                                  96\nOn-line CPU(s) list:                     0-95\nVendor ID:                               GenuineIntel\nModel name:                              Intel(R) Xeon(R) Gold 6336Y CPU @ 2.40GHz\nCPU family:                              6\nModel:                                   106\nThread(s) per core:                      2\nCore(s) per socket:                      24\nSocket(s):                               2\nStepping:                                6\nBogoMIPS:                                4800.00\nFlags:                                   fpu vme de pse tsc msr pae mce cx8 apic sep mtrr pge mca cmov pat pse36 clflush dts acpi mmx fxsr sse sse2 ss ht tm pbe syscall nx pdpe1gb rdtscp lm constant_tsc art arch_perfmon pebs bts rep_good nopl xtopology nonstop_tsc cpuid aperfmperf pni pclmulqdq dtes64 monitor ds_cpl vmx smx est tm2 ssse3 sdbg fma cx16 xtpr pdcm pcid dca sse4_1 sse4_2 x2apic movbe popcnt tsc_deadline_timer aes xsave avx f16c rdrand lahf_lm abm 3dnowprefetch cpuid_fault epb cat_l3 invpcid_single intel_ppin ssbd mba ibrs ibpb stibp ibrs_enhanced tpr_shadow vnmi flexpriority ept vpid ept_ad fsgsbase tsc_adjust bmi1 avx2 smep bmi2 erms invpcid cqm rdt_a avx512f avx512dq rdseed adx smap avx512ifma clflushopt clwb intel_pt avx512cd sha_ni avx512bw avx512vl xsaveopt xsavec xgetbv1 xsaves cqm_llc cqm_occup_llc cqm_mbm_total cqm_mbm_local split_lock_detect wbnoinvd dtherm ida arat pln pts hwp_epp avx512vbmi umip pku ospke avx512_vbmi2 gfni vaes vpclmulqdq avx512_vnni avx512_bitalg tme avx512_vpopcntdq la57 rdpid fsrm md_clear pconfig flush_l1d arch_capabilities\nVirtualization:                          VT-x\nL1d cache:                               2.3 MiB (48 instances)\nL1i cache:                               1.5 MiB (48 instances)\nL2 cache:                                60 MiB (48 instances)\nL3 cache:                                72 MiB (2 instances)\nNUMA node(s):                            2\nNUMA node0 CPU(s):                       0-23,48-71\nNUMA node1 CPU(s):                       24-47,72-95\nVulnerability Gather data sampling:      Mitigation; Microcode\nVulnerability Indirect target selection: Mitigation; Aligned branch/return thunks\nVulnerability Itlb multihit:             Not affected\nVulnerability L1tf:                      Not affected\nVulnerability Mds:                       Not affected\nVulnerability Meltdown:                  Not affected\nVulnerability Mmio stale data:           Mitigation; Clear CPU buffers; SMT vulnerable\nVulnerability Reg file data sampling:    Not affected\nVulnerability Retbleed:                  Not affected\nVulnerability Spec rstack overflow:      Not affected\nVulnerability Spec store bypass:         Mitigation; Speculative Store Bypass disabled via prctl and seccomp\nVulnerability Spectre v1:                Mitigation; usercopy/swapgs barriers and __user pointer sanitization\nVulnerability Spectre v2:                Mitigation; Enhanced / Automatic IBRS; IBPB conditional; PBRSB-eIBRS SW sequence; BHI SW loop, KVM SW loop\nVulnerability Srbds:                     Not affected\nVulnerability Tsx async abort:           Not affected\n\nVersions of relevant libraries:\n[pip3] Could not collect\n[conda] Could not collect",
+    "transformers_version": "5.2.0",
+    "lm_eval_version": "0.4.11",
+    "upper_git_hash": null,
+    "tokenizer_pad_token": [
+        "<unk>",
+        "0"
+    ],
+    "tokenizer_eos_token": [
+        "</s>",
+        "2"
+    ],
+    "tokenizer_bos_token": [
+        "<s>",
+        "1"
+    ],
+    "eot_token_id": 2,
+    "max_length": 2048
+}

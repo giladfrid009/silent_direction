@@ -24,6 +24,7 @@ def train_norm(
     proj_weight: float = 0.1,
     kl_weight: float = 1.0,
     loss_reduction: str = "mean",
+    window_size: int = 10,
 ) -> tuple[torch.Tensor, list[dict[str, float]]]:
 
     # samplemean computes mean over each sample tokens
@@ -37,7 +38,7 @@ def train_norm(
 
     best_score = -float("inf")
     best_direction = w.clone().detach()
-    score_tracker = RunningAverage(window_size=10)
+    score_tracker = RunningAverage(window_size=window_size)
 
     def subtract_projection(activations: torch.Tensor) -> torch.Tensor:
         projection = project(activations, direction=w, normalize=True)
