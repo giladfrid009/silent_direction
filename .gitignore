@@ -30,4 +30,5 @@ logs/**
 !logs/silent-norm-ablations-v3/results.json
 !logs/silent-norm-runs-v1/results.json
 !logs/silent-norm-runs-v2/results.json
+!logs/silent-norm-runs-v3/results.json
 
