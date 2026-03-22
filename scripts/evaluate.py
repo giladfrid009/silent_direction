@@ -80,7 +80,6 @@ class Evaluator:
                 f"Chat models datasets: {SUPPORTED_DATASETS_CHAT}. "
                 f"Base models datasets: {SUPPORTED_DATASETS_BASE}. "
             ),
-            
         )
 
         parser.add_argument(
@@ -250,6 +249,7 @@ class Evaluator:
         meta: Meta,
         ds_eval: pd.DataFrame,
         batch_size: int,
+        max_steps: int = 250,
     ) -> tuple[dict[str, Any], pd.DataFrame]:
 
         clear_memory()
@@ -267,8 +267,12 @@ class Evaluator:
             targeted_model.dtype,
         )
 
+        # increase max steps by the same factor we decreased batch size
+        batch_ratio = args.batch_size / batch_size
+        max_steps = int(args.max_steps * batch_ratio)
+
         stop_criteria = StopCriteria(
-            max_steps=args.max_steps if not args.test_run else 10,
+            max_steps=max_steps if not args.test_run else 10,
             max_time=args.max_time if not args.test_run else 2,
         )
 
