@@ -101,7 +101,7 @@ class Evaluator:
         parser.add_argument(
             "--max_steps",
             type=int,
-            default=250,
+            default=125,
             metavar="NUM",
             help="The maximum number of evaluation steps.",
         )
