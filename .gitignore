@@ -20,6 +20,8 @@ slurm
 **.pt
 **.pth
 
+clean_results/greedy
+
 # include specifically these files
 logs/**
 !logs/**/

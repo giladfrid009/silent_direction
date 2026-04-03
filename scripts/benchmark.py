@@ -31,14 +31,9 @@ from src.utils.torch import clear_memory
 from scripts.utils.load_model import SUPPORTED_MODELS, load_model
 
 
-# NOTE: sometimes metabench doesnt work with chat templates, specifically with:
-# python scripts/benchmark.py logs/silent-norm-ablations/Llama-2-7b-chat-hf/tulu-v2/model.embed_tokens/Llama-2-7b-chat-hf-baseline-tulu-iter1/metadata --test_run --batch_size 8 --tasks metabench
-
-
 TASK_MANAGER: TaskManager | None = None  # global task manager instance to be used for all benchmarks
 
 SUPPORTED_TASKS_CHAT = [
-    "wikitext",  # Language modeling perplexity.
     "jsonschema_bench",  # Schema-constrained JSON generation.
     "metabench_arc",  # Multiple choice question answering.
     "metabench_gsm8k",  # Grade school math problem solving.
@@ -157,6 +152,12 @@ class Benchmarker:
             default=16,
             metavar="N",
             help="Batch size for data loading.",
+        )
+
+        parser.add_argument(
+            "--log_samples",
+            action="store_true",
+            help="Whether to log samples and predictions during evaluation",
         )
 
         parser.add_argument(
@@ -380,10 +381,11 @@ class Benchmarker:
                 model=bench_model,
                 tasks=[task],
                 limit=task_params.pop("limit", None),
-                log_samples=task_params.pop("log_samples", False),
+                log_samples=args.log_samples,
                 bootstrap_iters=task_params.pop("bootstrap_iters", 0),
                 confirm_run_unsafe_code=not args.disable_code,
                 apply_chat_template=meta.is_chat_model,
+                fewshot_as_multiturn=meta.is_chat_model,
                 task_manager=TASK_MANAGER,
                 use_cache=None,
                 cache_requests=False,  # otherwise causes weird issues since kwargs are baked-in within the requests

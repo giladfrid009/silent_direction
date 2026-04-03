@@ -1,6 +1,0 @@
-{
-    "model_name": "microsoft/Phi-3-mini-4k-instruct",
-    "layer_name": "model.embed_tokens",
-    "dataset_name": "--",
-    "is_chat_model": true
-}
