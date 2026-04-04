@@ -58,3 +58,30 @@ if log_samples:
     # --- end patch ---
 
 ## --- end patch ---
+
+
+# There is a need for another patch:
+
+    # --- PATCH START ---
+
+    probs = utils.softmax(lls)
+    probs_norm = utils.softmax(lls / completion_len)
+    probs_byte = utils.softmax(lls / byte_length)
+
+    # sample from each prob dist to get the prediction
+    # dont take argmax but SAMPLE
+    pred = np.random.choice(len(probs), p=probs)
+    pred_norm = np.random.choice(len(probs), p=probs_norm)
+    pred_byte = np.random.choice(len(probs), p=probs_byte)
+        
+    # pred = np.argmax(lls)
+    # pred_norm = np.argmax(lls / completion_len)
+    # pred_byte = np.argmax(lls / byte_length)
+
+    # --- PATCH END ---
+
+
+# in blimp task yaml change to 
+        weight_by_size: True
+
+    

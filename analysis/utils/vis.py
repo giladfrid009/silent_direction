@@ -841,3 +841,4 @@ def plot_metrics_correlation(
 		fig.suptitle(f"Metric: {metric}", y=1.02, fontsize=12, fontweight="bold")
 		plt.tight_layout()
 		plt.show()
+	

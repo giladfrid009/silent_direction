@@ -9,7 +9,7 @@ import gc
 # Global Constants & Configuration
 # =============================================================================
 
-PROJECT_NAME = "silent-norm-runs-v3"
+PROJECT_NAME = "silent-norm-final-v1"
 SCRIPT_PATH = "scripts/run_norm.py"
 
 # Default Arguments shared across all runs unless overridden
