@@ -174,7 +174,8 @@ class Benchmarker:
 
         parser.add_argument(
             "--do_sample",
-            action="store_true",
+            choices=["true", "false"],
+            default="true",
             help="Whether to use sampling instead of greedy decoding during evaluation (for tasks that require generation).",
         )
 
@@ -343,7 +344,7 @@ class Benchmarker:
         if args.test_run:
             task_params["limit"] = batch_size * 2
 
-        if args.do_sample:  # enable sampling for generation tasks
+        if args.do_sample.lower() == "true":  # enable sampling for generation tasks
             gen_kwargs: dict = task_params.get("gen_kwargs", {})
             task_params["gen_kwargs"] = {
                 **gen_kwargs,

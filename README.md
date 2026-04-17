@@ -1,8 +1,19 @@
-# --- patch: save gold_index for multiple_choice tasks ---
+# Silent Directions
 
-# place it in lm_eval.evaluator.evaluate() right after:
+To find silent directions, install all requirements using `uv sync` and then:
 
+- run `scripts/run_norm.py` to train and find silent directions
+- (optionally) run `scripts/evaluation.py` to perform additional kl-div and norm evaluations beyond ones that are performed during training
+- run `scripts/benchmark.py` to evaluate the found directions on downstream tasks
+- run `scripts/summarize_logprobs.py` on the created benchmark folders to summarize all multi-choice benchmark results for analysis.
+- run `scripts/summarize.py` on the created benchmark folders to summarize all generative benchmark results for analysis.
+- perform analysis of the results with the provided notebooks in `analysis` folder
 
+## Required Patches for `lm-eval`
+
+patch1: save gold_index for multiple_choice tasks. place it in `lm_eval.evaluator.evaluate()` right after:
+
+```python
 if log_samples:
     target = task.doc_to_target(doc)
     example = {
@@ -27,10 +38,11 @@ if log_samples:
         "prompt_hash": hash_string(requests[0].arguments[0]),
         "target_hash": hash_string(str(target)),
     }
+```
 
+### patch code: 
 
-## patch code: 
-
+```python
     # --- start patch ---
     if task.OUTPUT_TYPE == "multiple_choice":
         _gold = (
@@ -56,12 +68,12 @@ if log_samples:
             
         example["extra_fields"] = extra_fields
     # --- end patch ---
+```
 
-## --- end patch ---
 
+### There is a need for another patch:
 
-# There is a need for another patch:
-
+```python
     # --- PATCH START ---
 
     probs = utils.softmax(lls)
@@ -80,8 +92,6 @@ if log_samples:
 
     # --- PATCH END ---
 
-
 # in blimp task yaml change to 
         weight_by_size: True
-
-    
+```
