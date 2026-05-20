@@ -1,0 +1,6 @@
+{
+    "model_name": "Qwen/Qwen2.5-0.5B-Instruct",
+    "layer_name": "model.embed_tokens",
+    "dataset_name": "--",
+    "is_chat_model": true
+}

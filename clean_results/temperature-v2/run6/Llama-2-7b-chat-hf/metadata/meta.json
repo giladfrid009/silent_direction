@@ -1,0 +1,6 @@
+{
+    "model_name": "meta-llama/Llama-2-7b-chat-hf",
+    "layer_name": "model.embed_tokens",
+    "dataset_name": "--",
+    "is_chat_model": true
+}

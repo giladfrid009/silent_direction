@@ -53,7 +53,6 @@ SUPPORTED_TASKS_CHAT = [
     "piqa",  # Physical commonsense reasoning.
     "mastermind_easy",  # Symbolic logical deduction.
     "toxigen",  # Toxicity and bias sensitivity.
-    "blimp",  # Syntactic/grammatical competence.
 ]
 
 SUPPORTED_TASKS_BASE = [
@@ -62,10 +61,8 @@ SUPPORTED_TASKS_BASE = [
     "metabench_mmlu",
     "metabench_truthfulqa",
     "metabench_winogrande",
-    "wikitext",
     "lambada_cloze",
     "lambada_multilingual_stablelm",
-    "blimp",
     "anli",
     "piqa",
     "mbpp",
@@ -85,13 +82,11 @@ TASK_PARAMS: dict[str, dict] = {
     "xquad_ru": dict(batch_scale=1.5, limit=0.5),
     "xquad_es": dict(batch_scale=2.0, limit=0.5),
     "xquad_zh": dict(batch_scale=1.5, limit=0.5),
-    "ifeval": dict(batch_scale=1.5, limit=0.25),
-    "wikitext": dict(batch_scale=1.0),
-    "blimp": dict(batch_scale=15.0, limit=0.5),
+    "ifeval": dict(batch_scale=1.5, limit=0.5),
     "anli": dict(batch_scale=6.0),
     "piqa": dict(batch_scale=6.0),
     "mbpp": dict(batch_scale=1.35),
-    "jsonschema_bench": dict(batch_scale=1.35, limit=0.33, gen_kwargs=dict(max_gen_toks=256, until=["\n\n"])),
+    "jsonschema_bench": dict(batch_scale=1.35, limit=0.66, gen_kwargs=dict(max_gen_toks=256, until=["\n\n"])),
     "mastermind_easy": dict(batch_scale=6.0),
     "toxigen": dict(batch_scale=6.0),
     "wmdp": dict(batch_scale=1.0),

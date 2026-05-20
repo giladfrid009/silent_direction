@@ -1,0 +1,1 @@
+python scripts/benchmark.py clean_results/temperature-v2/run{i} --recurse --clean_run --tasks ifeval jsonschema_bench mbpp metabench_gsm8k xquad_ar xquad_en xquad_es xquad_ru xquad_zh --seed i

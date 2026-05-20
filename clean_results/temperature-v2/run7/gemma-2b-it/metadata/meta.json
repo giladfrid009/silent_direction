@@ -1,0 +1,6 @@
+{
+    "model_name": "google/gemma-2b-it",
+    "layer_name": "model.embed_tokens",
+    "dataset_name": "--",
+    "is_chat_model": true
+}

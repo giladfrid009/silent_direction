@@ -23,6 +23,7 @@ slurm
 clean_results/greedy
 
 # include specifically these files
+logs-v2
 logs/**
 !logs/**/
 
